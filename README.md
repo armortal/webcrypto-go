@@ -19,6 +19,6 @@ The documentation and references used throughout this library come from the amaz
 
 | Algorithm | Usages | 
 | :-------- | :---------- |
-| `hmac` | `generateKey` |
-| `sha1` | `digest` |
-| `sha256` | `digest` |
+| **HMAC** | `generateKey` |
+| **SHA-1** | `digest` |
+| **SHA-256** | `digest` |
