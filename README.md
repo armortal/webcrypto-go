@@ -11,3 +11,14 @@ The documentation and references used throughout this library come from the amaz
 - [W3C Web Cryptography API Specification](https://w3c.github.io/webcrypto/)
 - [Mozilla Web Crypto API Docs](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
 
+## Getting started
+
+`go get github.com/armortal/webcrypto-go`
+
+## Implementation status
+
+| Algorithm | Usages | 
+| :-------- | :---------- |
+| `hmac` | `generateKey` |
+| `sha1` | `digest` |
+| `sha256` | `digest` |
