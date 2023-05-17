@@ -186,6 +186,10 @@ func (a *Algorithm) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm
 	return nil, errors.New("not implemented")
 }
 
+func importKeyFromJsonWebKey(keyData any, algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+	return nil, nil
+}
+
 func (a *Algorithm) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) ([]byte, error) {
 	return nil, errors.New("not implemented")
 }
