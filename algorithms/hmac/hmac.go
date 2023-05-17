@@ -27,6 +27,7 @@ import (
 	"io"
 
 	"github.com/armortal/webcrypto-go"
+	shaalg "github.com/armortal/webcrypto-go/algorithms/sha256"
 	"github.com/armortal/webcrypto-go/util"
 )
 
@@ -36,7 +37,8 @@ var usages = []webcrypto.KeyUsage{
 }
 
 type Algorithm struct {
-	*AlgorithmParams
+	Hash   webcrypto.Algorithm
+	Length int
 }
 
 type CryptoKey struct {
@@ -46,14 +48,36 @@ type CryptoKey struct {
 	secret      []byte
 }
 
-type AlgorithmParams struct {
+type options struct {
 	Hash   webcrypto.Algorithm
 	Length int
 }
 
-func New(params *AlgorithmParams) *Algorithm {
+type Option func(o *options)
+
+func WithHash(hash webcrypto.Algorithm) Option {
+	return func(o *options) {
+		o.Hash = hash
+	}
+}
+
+func WithLength(length int) Option {
+	return func(o *options) {
+		o.Length = length
+	}
+}
+
+func New(opts ...Option) *Algorithm {
+	o := &options{
+		Hash:   shaalg.New(),
+		Length: 0,
+	}
+	for _, apply := range opts {
+		apply(o)
+	}
 	return &Algorithm{
-		AlgorithmParams: params,
+		Hash:   o.Hash,
+		Length: o.Length,
 	}
 }
 
