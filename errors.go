@@ -15,6 +15,7 @@
 package webcrypto
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -40,6 +41,14 @@ func NewError(name string, message string) Error {
 	}
 }
 
+func FromError(err error) (Error, error) {
+	e, ok := err.(*errorInternal)
+	if !ok {
+		return nil, errors.New("error is not *webcrypto.Error")
+	}
+	return e, nil
+}
+
 type errorInternal struct {
 	name    string
 	message string
@@ -57,6 +66,14 @@ func (e *errorInternal) Message() string {
 	return e.message
 }
 
-func errNotSupportedError(message string) Error {
-	return NewError(ErrNotSupportedError, message)
+func ErrMethodNotSupported() Error {
+	return NewError(ErrNotSupportedError, "method not supported")
+}
+
+func ErrInvalidUsages(allowed ...KeyUsage) Error {
+	usages := ""
+	for _, v := range allowed {
+		usages = fmt.Sprintf("%s,%s", usages, v)
+	}
+	return NewError(ErrSyntaxError, fmt.Sprintf("[%s] are the only valid usages", usages))
 }

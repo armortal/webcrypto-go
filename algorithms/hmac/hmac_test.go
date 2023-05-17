@@ -12,22 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
+package hmac
 
 import (
-	"github.com/armortal/webcrypto-go"
+	"testing"
 )
 
-// CheckUsages will check if the usages provided are valid usages in the allowed array.
-func AreUsagesValid(allowed []webcrypto.KeyUsage, usages []webcrypto.KeyUsage) bool {
-loop:
-	for _, x := range usages {
-		for _, y := range allowed {
-			if x == y {
-				continue loop
-			}
-		}
-		return false
-	}
-	return true
+func TestGenerateKey(t *testing.T) {
+
 }

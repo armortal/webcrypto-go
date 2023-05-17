@@ -15,9 +15,15 @@
 package hmac
 
 import (
+	"bytes"
+	"crypto/hmac"
+	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"hash"
 	"io"
 
 	"github.com/armortal/webcrypto-go"
@@ -51,10 +57,6 @@ func New(params *AlgorithmParams) *Algorithm {
 	}
 }
 
-func (c *CryptoKey) ID() string {
-	return ""
-}
-
 func (c *CryptoKey) Type() webcrypto.KeyType {
 	return webcrypto.Secret
 }
@@ -76,29 +78,29 @@ func (a *Algorithm) Name() string {
 }
 
 func (a *Algorithm) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *Algorithm) DeriveBits(algorithm webcrypto.Algorithm, baseKey webcrypto.CryptoKey, length uint64) ([]byte, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *Algorithm) DeriveKey(algorithm webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *Algorithm) Digest(algorithm webcrypto.Algorithm, data io.Reader) ([]byte, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *Algorithm) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *Algorithm) ExportKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey) (any, error) {
 	k, ok := key.(*CryptoKey)
 	if !ok {
-		return nil, webcrypto.ErrNotSupported
+		return nil, webcrypto.ErrMethodNotSupported()
 	}
 	switch format {
 	case webcrypto.JsonWebKey:
@@ -106,7 +108,7 @@ func (a *Algorithm) ExportKey(format webcrypto.KeyFormat, key webcrypto.CryptoKe
 	case webcrypto.Raw:
 		return exportKeyAsRaw(k)
 	default:
-		return nil, webcrypto.ErrNotSupported
+		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, fmt.Sprintf("format %s not supported", format))
 	}
 }
 
@@ -147,7 +149,7 @@ func (a *Algorithm) GenerateKey(algorithm webcrypto.Algorithm, extractable bool,
 	case "SHA-256":
 		blockSize = 512
 	default:
-		return nil, webcrypto.ErrNotSupported
+		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "hash algorithm not supported")
 	}
 
 	if alg.Length != 0 {
@@ -165,8 +167,8 @@ func (a *Algorithm) GenerateKey(algorithm webcrypto.Algorithm, extractable bool,
 	if len(keyUsages) == 0 {
 		return nil, errors.New("webcrypto: at least one key usage is required")
 	}
-	if err := util.CheckUsages(usages, keyUsages); err != nil {
-		return nil, err
+	if ok := util.AreUsagesValid(usages, keyUsages); !ok {
+		return nil, webcrypto.ErrInvalidUsages(usages...)
 	}
 
 	b := make([]byte, alg.Length/8)
@@ -182,16 +184,89 @@ func (a *Algorithm) GenerateKey(algorithm webcrypto.Algorithm, extractable bool,
 	}, nil
 }
 
-func (a *Algorithm) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
-	return nil, errors.New("not implemented")
+func (a *Algorithm) ImportKey(format webcrypto.KeyFormat, keyData []byte, algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+	alg, ok := algorithm.(*Algorithm)
+	if !ok {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm must be *hmac.Algorithm")
+	}
+	if ok := util.AreUsagesValid(usages, keyUsages); !ok {
+		return nil, webcrypto.ErrInvalidUsages(usages...)
+	}
+	switch format {
+	case webcrypto.JsonWebKey:
+		return importKeyFromJsonWebKey(keyData, alg, extractable, keyUsages...)
+	case webcrypto.Raw:
+		return importKeyFromRaw(keyData, alg, extractable, keyUsages...)
+	default:
+		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, fmt.Sprintf("format %s not supported", format))
+	}
 }
 
-func importKeyFromJsonWebKey(keyData any, algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+func importKeyFromJsonWebKey(keyData []byte, algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+	var jwk map[string]any
+	if err := json.Unmarshal(keyData, &jwk); err != nil {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, err.Error())
+	}
+
+	kty, ok := jwk["kty"]
+	if !ok {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "field 'kty' not present")
+	}
+	if kty != "oct" {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "kty is not 'oct'")
+	}
+
 	return nil, nil
 }
 
+func importKeyFromRaw(keyData any, algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+	secret, ok := keyData.([]byte)
+	if !ok {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "keyData must be []byte")
+	}
+
+	length := len(secret) * 8
+	if length == 0 {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "length must not be 0")
+	}
+
+	algorithm.Length = length
+
+	return &CryptoKey{
+		algorithm:   algorithm,
+		extractable: extractable,
+		secret:      secret,
+		usages:      keyUsages,
+	}, nil
+}
+
 func (a *Algorithm) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) ([]byte, error) {
-	return nil, errors.New("not implemented")
+	if _, ok := algorithm.(*Algorithm); !ok {
+		return nil, errors.New("webcrypto: algorithm must be *hmac.Algorithm")
+	}
+
+	k, ok := key.(*CryptoKey)
+	if !ok {
+		return nil, errors.New("key must be *hmac.CryptoKey")
+	}
+
+	var hash func() hash.Hash
+	switch k.algorithm.Hash.Name() {
+	case "SHA-1":
+		hash = sha1.New
+	case "SHA-256":
+		hash = sha256.New
+	default:
+		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "hash not supported")
+	}
+
+	h := hmac.New(hash, k.secret)
+	b, err := io.ReadAll(data)
+	if err != nil {
+		return nil, err
+	}
+	h.Write(b)
+	return h.Sum(nil), nil
 }
 
 func (a *Algorithm) UnwrapKey(format webcrypto.KeyFormat,
@@ -201,12 +276,20 @@ func (a *Algorithm) UnwrapKey(format webcrypto.KeyFormat,
 	unwrappedKeyAlgorithm webcrypto.Algorithm,
 	extractable bool,
 	keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
+}
+
+func (a *Algorithm) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
+	act, err := a.Sign(algorithm, key, bytes.NewReader(data))
+	if err != nil {
+		return false, err
+	}
+	return hmac.Equal(signature, act), nil
 }
 
 func (a *Algorithm) WrapKey(format webcrypto.KeyFormat,
 	key webcrypto.CryptoKey,
 	wrappingKey webcrypto.CryptoKey,
 	wrapAlgorithm webcrypto.Algorithm) (any, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }
