@@ -1,6 +1,13 @@
 # webcrypto-go
 An implementation of the W3C Web Cryptography API specification (https://w3c.github.io/webcrypto/) for Go.
 
+## Contents
+
+- [Background](#background)
+- [Implementation status](#implementation-status)
+- [Getting started](#getting-started)
+- [Examples](#examples)
+
 ## Background
 
 The Web Cryptography API is an open standard developed by the W3C and *"defines a low-level interface to interacting with cryptographic key material that is managed or exposed by user agents"* (https://w3c.github.io/webcrypto/).
@@ -11,14 +18,46 @@ The documentation and references used throughout this library come from the amaz
 - [W3C Web Cryptography API Specification](https://w3c.github.io/webcrypto/)
 - [Mozilla Web Crypto API Docs](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
 
-## Getting started
-
-`go get github.com/armortal/webcrypto-go`
-
 ## Implementation status
+
+This library is still in active development and all algorithms are not yet supported. While we continue working on implementations that we think are priority, we welcome feedback and contributions from our open-source community. Below are algorithms and their usages that have been implemented.
 
 | Algorithm | Usages | 
 | :-------- | :---------- |
 | **HMAC** | `generateKey` |
 | **SHA-1** | `digest` |
 | **SHA-256** | `digest` |
+
+## Getting started
+
+`go get github.com/armortal/webcrypto-go`
+
+### Examples
+
+```go
+package main
+
+import (
+	"github.com/armortal/webcrypto-go"
+	"github.com/armortal/webcrypto-go/algorithms/hmac"
+	"github.com/armortal/webcrypto-go/algorithms/sha256"
+)
+
+func main() {
+	key, err := webcrypto.Subtle().GenerateKey(hmac.New(&hmac.AlgorithmParams{
+		Hash: sha256.New(),
+	}), true, webcrypto.Sign, webcrypto.Verify)
+
+	if err != nil {
+		panic(err)
+	}
+
+	cryptokey := key.(webcrypto.CryptoKey)
+
+	// do something with cryptoKey
+}
+```
+
+## Contributing
+
+If you have found a bug or would like to see new features, please create a new issue in this repository. If there is an issue that poses a security risk, please refrain from posting the issue publicly and contact [support@armortal.com](mailto://support@armortal.com) instead.
