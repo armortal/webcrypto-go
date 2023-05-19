@@ -15,13 +15,11 @@
 package util
 
 import (
-	"fmt"
-
 	"github.com/armortal/webcrypto-go"
 )
 
 // CheckUsages will check if the usages provided are valid usages in the allowed array.
-func CheckUsages(allowed []webcrypto.KeyUsage, usages []webcrypto.KeyUsage) error {
+func AreUsagesValid(allowed []webcrypto.KeyUsage, usages []webcrypto.KeyUsage) bool {
 loop:
 	for _, x := range usages {
 		for _, y := range allowed {
@@ -29,7 +27,7 @@ loop:
 				continue loop
 			}
 		}
-		return fmt.Errorf("usage %s not allowed", x)
+		return false
 	}
-	return nil
+	return true
 }

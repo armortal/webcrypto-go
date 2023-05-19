@@ -32,15 +32,15 @@ func (a *Algorithm) Name() string {
 }
 
 func (a *Algorithm) Decrypt(algorithm Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *Algorithm) DeriveBits(algorithm Algorithm, baseKey webcrypto.CryptoKey, length uint64) ([]byte, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *Algorithm) DeriveKey(algorithm Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *Algorithm) Digest(algorithm Algorithm, data io.Reader) ([]byte, error) {
@@ -54,23 +54,23 @@ func (a *Algorithm) Digest(algorithm Algorithm, data io.Reader) ([]byte, error) 
 }
 
 func (a *Algorithm) Encrypt(algorithm Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *Algorithm) ExportKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey) (any, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *Algorithm) GenerateKey(algorithm Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (any, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *Algorithm) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *Algorithm) Sign(algorithm Algorithm, key webcrypto.CryptoKey, data io.Reader) ([]byte, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *Algorithm) UnwrapKey(format webcrypto.KeyFormat,
@@ -80,9 +80,13 @@ func (a *Algorithm) UnwrapKey(format webcrypto.KeyFormat,
 	unwrappedKeyAlgorithm Algorithm,
 	extractable bool,
 	keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
+}
+
+func (a *Algorithm) Verify(algorithm Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
+	return false, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *Algorithm) WrapKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey, wrappingKey webcrypto.CryptoKey, wrapAlgorithm Algorithm) (any, error) {
-	return nil, webcrypto.ErrNotSupported
+	return nil, webcrypto.ErrMethodNotSupported()
 }

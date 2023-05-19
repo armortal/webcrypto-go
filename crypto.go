@@ -24,7 +24,7 @@ import (
 // See §10.1.1 (https://w3c.github.io/webcrypto/#Crypto-method-getRandomValues)
 func GetRandomValues(b []byte) error {
 	if len(b) > 65536 {
-		return ErrQuotaExceeded
+		return NewError(ErrQuotaExceededError, "byte array length greater than 65536")
 	}
 	_, err := rand.Read(b)
 	return err

@@ -68,7 +68,7 @@ type SubtleCrypto interface {
 	// ImportKey imports a key: that is, it takes as input a key in an external, portable format and
 	// gives you a CryptoKey object that you can use in the Web Crypto API.
 	// See §14.2.9 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-importKey)
-	ImportKey(format KeyFormat, keyData any, algorithm Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error)
+	ImportKey(format KeyFormat, keyData []byte, algorithm Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error)
 
 	// Sign generates a digital signature.
 	// See §14.2.3 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-sign)
@@ -86,6 +86,10 @@ type SubtleCrypto interface {
 		extractable bool,
 		keyUsages ...KeyUsage) (CryptoKey, error)
 
+	// Verify verifies a digital signature.
+	// See §14.2.4 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-verify)
+	Verify(algorithm Algorithm, key CryptoKey, signature []byte, data []byte) (bool, error)
+
 	// WrapKey "wraps" a key. This means that it exports the key in an external, portable format, then encrypts
 	// the exported key. Wrapping a key helps protect it in untrusted environments, such as inside an otherwise
 	// unprotected data store or in transmission over an unprotected network.
@@ -101,74 +105,74 @@ func Subtle() SubtleCrypto {
 }
 
 func (s *subtleCrypto) Decrypt(algorithm Algorithm, key CryptoKey, data io.Reader) (any, error) {
-	subtle, ok := algorithm.(SubtleCrypto)
-	if !ok {
-		return nil, ErrNotSupported
+	subtle, err := getSubtleCrypto(algorithm)
+	if err != nil {
+		return nil, err
 	}
 	return subtle.Decrypt(algorithm, key, data)
 }
 
 func (s *subtleCrypto) DeriveBits(algorithm Algorithm, baseKey CryptoKey, length uint64) ([]byte, error) {
-	subtle, ok := algorithm.(SubtleCrypto)
-	if !ok {
-		return nil, ErrNotSupported
+	subtle, err := getSubtleCrypto(algorithm)
+	if err != nil {
+		return nil, err
 	}
 	return subtle.DeriveBits(algorithm, baseKey, length)
 }
 
 func (s *subtleCrypto) DeriveKey(algorithm Algorithm, baseKey CryptoKey, derivedKeyType Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error) {
-	subtle, ok := algorithm.(SubtleCrypto)
-	if !ok {
-		return nil, ErrNotSupported
+	subtle, err := getSubtleCrypto(algorithm)
+	if err != nil {
+		return nil, err
 	}
 	return subtle.DeriveKey(algorithm, baseKey, derivedKeyType, extractable, keyUsages...)
 }
 
 func (s *subtleCrypto) Digest(algorithm Algorithm, data io.Reader) ([]byte, error) {
-	subtle, ok := algorithm.(SubtleCrypto)
-	if !ok {
-		return nil, ErrNotSupported
+	subtle, err := getSubtleCrypto(algorithm)
+	if err != nil {
+		return nil, err
 	}
 	return subtle.Digest(algorithm, data)
 }
 
 func (s *subtleCrypto) Encrypt(algorithm Algorithm, key CryptoKey, data io.Reader) (any, error) {
-	subtle, ok := algorithm.(SubtleCrypto)
-	if !ok {
-		return nil, ErrNotSupported
+	subtle, err := getSubtleCrypto(algorithm)
+	if err != nil {
+		return nil, err
 	}
 	return subtle.Encrypt(algorithm, key, data)
 
 }
 
 func (s *subtleCrypto) ExportKey(format KeyFormat, key CryptoKey) (any, error) {
-	subtle, ok := key.Algorithm().(SubtleCrypto)
-	if !ok {
-		return nil, ErrNotSupported
+	subtle, err := getSubtleCrypto(key.Algorithm())
+	if err != nil {
+		return nil, err
 	}
 	return subtle.ExportKey(format, key)
 }
 
 func (s *subtleCrypto) GenerateKey(algorithm Algorithm, extractable bool, keyUsages ...KeyUsage) (any, error) {
-	subtle, ok := algorithm.(SubtleCrypto)
-	if !ok {
-		return nil, ErrNotSupported
+	subtle, err := getSubtleCrypto(algorithm)
+	if err != nil {
+		return nil, err
 	}
 	return subtle.GenerateKey(algorithm, extractable, keyUsages...)
 }
 
-func (s *subtleCrypto) ImportKey(format KeyFormat, keyData any, algorithm Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error) {
-	subtle, ok := algorithm.(SubtleCrypto)
-	if !ok {
-		return nil, ErrNotSupported
+func (s *subtleCrypto) ImportKey(format KeyFormat, keyData []byte, algorithm Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error) {
+	subtle, err := getSubtleCrypto(algorithm)
+	if err != nil {
+		return nil, err
 	}
 	return subtle.ImportKey(format, keyData, algorithm, extractable, keyUsages...)
 }
 
 func (s *subtleCrypto) Sign(algorithm Algorithm, key CryptoKey, data io.Reader) ([]byte, error) {
-	subtle, ok := algorithm.(SubtleCrypto)
-	if !ok {
-		return nil, ErrNotSupported
+	subtle, err := getSubtleCrypto(algorithm)
+	if err != nil {
+		return nil, err
 	}
 	return subtle.Sign(algorithm, key, data)
 }
@@ -180,20 +184,36 @@ func (s *subtleCrypto) UnwrapKey(format KeyFormat,
 	unwrappedKeyAlgorithm Algorithm,
 	extractable bool,
 	keyUsages ...KeyUsage) (CryptoKey, error) {
-	subtle, ok := unwrappingKey.Algorithm().(SubtleCrypto)
-	if !ok {
-		return nil, ErrNotSupported
+	subtle, err := getSubtleCrypto(unwrappingKey.Algorithm())
+	if err != nil {
+		return nil, err
 	}
 	return subtle.UnwrapKey(format, wrappedKey, unwrappingKey, unwrapAlgorithm, unwrappedKeyAlgorithm, extractable, keyUsages...)
+}
+
+func (s *subtleCrypto) Verify(algorithm Algorithm, key CryptoKey, signature []byte, data []byte) (bool, error) {
+	subtle, ok := algorithm.(SubtleCrypto)
+	if !ok {
+		return false, NewError(ErrNotSupportedError, "algorithm does not implement webcrypto.SubtleCrypto")
+	}
+	return subtle.Verify(algorithm, key, signature, data)
 }
 
 func (s *subtleCrypto) WrapKey(format KeyFormat,
 	key CryptoKey,
 	wrappingKey CryptoKey,
 	wrapAlgorithm Algorithm) (any, error) {
-	subtle, ok := wrappingKey.Algorithm().(SubtleCrypto)
-	if !ok {
-		return nil, ErrNotSupported
+	subtle, err := getSubtleCrypto(wrappingKey.Algorithm())
+	if err != nil {
+		return nil, err
 	}
 	return subtle.WrapKey(format, key, wrappingKey, wrapAlgorithm)
+}
+
+func getSubtleCrypto(algorithm Algorithm) (SubtleCrypto, error) {
+	subtle, ok := algorithm.(SubtleCrypto)
+	if !ok {
+		return nil, NewError(ErrNotSupportedError, "algorithm does not implement webcrypto.SubtleCrypto")
+	}
+	return subtle, nil
 }

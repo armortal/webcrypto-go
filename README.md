@@ -22,9 +22,9 @@ The documentation and references used throughout this library come from the amaz
 
 This library is still in active development and all algorithms are not yet supported. While we continue working on implementations that we think are priority, we welcome feedback and contributions from our open-source community. Below are algorithms and their usages that have been implemented.
 
-| Algorithm | Usages | 
+| Algorithm | Methods | 
 | :-------- | :---------- |
-| **HMAC** | `generateKey` |
+| **HMAC** | `exportKey`, `generateKey`, `importKey`, `sign`, `verify` |
 | **SHA-1** | `digest` |
 | **SHA-256** | `digest` |
 
@@ -44,9 +44,8 @@ import (
 )
 
 func main() {
-	key, err := webcrypto.Subtle().GenerateKey(hmac.New(&hmac.AlgorithmParams{
-		Hash: sha256.New(),
-	}), true, webcrypto.Sign, webcrypto.Verify)
+	key, err := webcrypto.Subtle().GenerateKey(
+		hmac.New(hmac.WithHash(sha256.New())), true, webcrypto.Sign, webcrypto.Verify)
 
 	if err != nil {
 		panic(err)
