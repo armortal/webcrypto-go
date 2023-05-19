@@ -68,7 +68,7 @@ func WithLength(length int) Option {
 	}
 }
 
-func New(opts ...Option) webcrypto.Algorithm {
+func New(opts ...Option) *Algorithm {
 	o := &options{
 		Hash:   nil,
 		Length: 0,
@@ -127,11 +127,15 @@ func (a *Algorithm) ExportKey(format webcrypto.KeyFormat, key webcrypto.CryptoKe
 	if !ok {
 		return nil, webcrypto.ErrMethodNotSupported()
 	}
+	return exportKey(format, k)
+}
+
+func exportKey(format webcrypto.KeyFormat, key *CryptoKey) ([]byte, error) {
 	switch format {
 	case webcrypto.JsonWebKey:
-		return exportKeyAsJsonWebKey(k)
+		return exportKeyAsJsonWebKey(key)
 	case webcrypto.Raw:
-		return exportKeyAsRaw(k)
+		return exportKeyAsRaw(key)
 	default:
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, fmt.Sprintf("format %s not supported", format))
 	}
@@ -141,7 +145,7 @@ func exportKeyAsRaw(key *CryptoKey) ([]byte, error) {
 	return key.secret, nil
 }
 
-func exportKeyAsJsonWebKey(key *CryptoKey) (any, error) {
+func exportKeyAsJsonWebKey(key *CryptoKey) ([]byte, error) {
 	m := make(map[string]any)
 	m["key_ops"] = key.usages
 	m["kty"] = "oct"
@@ -167,8 +171,12 @@ func (a *Algorithm) GenerateKey(algorithm webcrypto.Algorithm, extractable bool,
 	if !ok {
 		return nil, errors.New("webcrypto: algorithm must be *hmac.Algorithm")
 	}
+	return generateKey(alg, extractable, keyUsages...)
+}
+
+func generateKey(algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
 	var blockSize int
-	switch alg.Hash.Name() {
+	switch algorithm.Hash.Name() {
 	case "SHA-1":
 		blockSize = sha1.BlockSize * 8
 	case "SHA-256":
@@ -177,15 +185,15 @@ func (a *Algorithm) GenerateKey(algorithm webcrypto.Algorithm, extractable bool,
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "hash algorithm not supported")
 	}
 
-	if alg.Length != 0 {
-		if alg.Length < blockSize {
+	if algorithm.Length != 0 {
+		if algorithm.Length < blockSize {
 			return nil, errors.New("length must be above or equal to hash block size")
 		}
-		if alg.Length%8 != 0 {
+		if algorithm.Length%8 != 0 {
 			return nil, errors.New("length must be multiples of 8")
 		}
 	} else {
-		alg.Length = blockSize
+		algorithm.Length = blockSize
 	}
 
 	// check the key usages
@@ -196,13 +204,13 @@ func (a *Algorithm) GenerateKey(algorithm webcrypto.Algorithm, extractable bool,
 		return nil, webcrypto.ErrInvalidUsages(usages...)
 	}
 
-	b := make([]byte, alg.Length/8)
+	b := make([]byte, algorithm.Length/8)
 	if err := webcrypto.GetRandomValues(b); err != nil {
 		return nil, err
 	}
 
 	return &CryptoKey{
-		algorithm:   alg,
+		algorithm:   algorithm,
 		extractable: extractable,
 		usages:      keyUsages,
 		secret:      b,
@@ -214,14 +222,18 @@ func (a *Algorithm) ImportKey(format webcrypto.KeyFormat, keyData []byte, algori
 	if !ok {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm must be *hmac.Algorithm")
 	}
+	return importKey(format, keyData, alg, extractable, usages...)
+}
+
+func importKey(format webcrypto.KeyFormat, keyData []byte, algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
 	if ok := util.AreUsagesValid(usages, keyUsages); !ok {
 		return nil, webcrypto.ErrInvalidUsages(usages...)
 	}
 	switch format {
 	case webcrypto.JsonWebKey:
-		return importKeyFromJsonWebKey(keyData, alg, extractable, keyUsages...)
+		return importKeyFromJsonWebKey(keyData, algorithm, extractable, keyUsages...)
 	case webcrypto.Raw:
-		return importKeyFromRaw(keyData, alg, extractable, keyUsages...)
+		return importKeyFromRaw(keyData, algorithm, extractable, keyUsages...)
 	default:
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, fmt.Sprintf("format %s not supported", format))
 	}
@@ -263,6 +275,11 @@ func importKeyFromJsonWebKey(keyData []byte, algorithm *Algorithm, extractable b
 			return nil, webcrypto.NewError(webcrypto.ErrDataError, "invalid alg value")
 		}
 		hashLength = sha256.BlockSize * 8
+	case "SHA-384":
+		if alg != "HS384" {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "invalid alg value")
+		}
+		hashLength = sha512.BlockSize * 8
 	case "SHA-512":
 		if alg != "HS512" {
 			return nil, webcrypto.NewError(webcrypto.ErrDataError, "invalid alg value")
@@ -369,6 +386,10 @@ func (a *Algorithm) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey,
 		hash = sha1.New
 	case "SHA-256":
 		hash = sha256.New
+	case "SHA-384":
+		hash = sha512.New384
+	case "SHA-512":
+		hash = sha512.New
 	default:
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "hash not supported")
 	}
