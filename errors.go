@@ -21,9 +21,10 @@ import (
 
 const (
 	ErrDataError          string = "DataError"
-	ErrSyntaxError               = "SyntaxError"
-	ErrNotSupportedError         = "NotSupportedError"
-	ErrQuotaExceededError        = "QuotaExceededError"
+	ErrOperationError     string = "OperationError"
+	ErrSyntaxError        string = "SyntaxError"
+	ErrNotSupportedError  string = "NotSupportedError"
+	ErrQuotaExceededError string = "QuotaExceededError"
 )
 
 type Error interface {
