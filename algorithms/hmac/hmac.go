@@ -19,6 +19,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -27,7 +28,6 @@ import (
 	"io"
 
 	"github.com/armortal/webcrypto-go"
-	shaalg "github.com/armortal/webcrypto-go/algorithms/sha256"
 	"github.com/armortal/webcrypto-go/util"
 )
 
@@ -37,6 +37,7 @@ var usages = []webcrypto.KeyUsage{
 }
 
 type Algorithm struct {
+	webcrypto.SubtleCrypto
 	Hash   webcrypto.Algorithm
 	Length int
 }
@@ -67,9 +68,9 @@ func WithLength(length int) Option {
 	}
 }
 
-func New(opts ...Option) *Algorithm {
+func New(opts ...Option) webcrypto.Algorithm {
 	o := &options{
-		Hash:   shaalg.New(),
+		Hash:   nil,
 		Length: 0,
 	}
 	for _, apply := range opts {
@@ -169,9 +170,9 @@ func (a *Algorithm) GenerateKey(algorithm webcrypto.Algorithm, extractable bool,
 	var blockSize int
 	switch alg.Hash.Name() {
 	case "SHA-1":
-		blockSize = 512
+		blockSize = sha1.BlockSize * 8
 	case "SHA-256":
-		blockSize = 512
+		blockSize = sha256.BlockSize * 8
 	default:
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "hash algorithm not supported")
 	}
@@ -234,13 +235,101 @@ func importKeyFromJsonWebKey(keyData []byte, algorithm *Algorithm, extractable b
 
 	kty, ok := jwk["kty"]
 	if !ok {
-		return nil, webcrypto.NewError(webcrypto.ErrDataError, "field 'kty' not present")
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "'kty not present")
 	}
 	if kty != "oct" {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "kty is not 'oct'")
 	}
 
-	return nil, nil
+	k, ok := jwk["k"]
+	if !ok {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "k not present")
+	}
+
+	alg, ok := jwk["alg"]
+	if !ok {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "alg not present")
+	}
+
+	var hashLength int
+	switch algorithm.Hash.Name() {
+	case "SHA-1":
+		if alg != "HS1" {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "invalid alg value")
+		}
+		hashLength = sha1.BlockSize * 8
+	case "SHA-256":
+		if alg != "HS256" {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "invalid alg value")
+		}
+		hashLength = sha256.BlockSize * 8
+	case "SHA-512":
+		if alg != "HS512" {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "invalid alg value")
+		}
+		hashLength = sha512.BlockSize * 8
+	default:
+		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "hash is not supported")
+	}
+
+	// If usages is non-empty and the use field of jwk is present and is not "sign", then throw a DataError.
+	if len(usages) != 0 {
+		use, ok := jwk["use"]
+		if !ok {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "use not present")
+		}
+		if use != "sign" {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "use must be 'sign'")
+		}
+	}
+
+	b, err := base64.RawURLEncoding.DecodeString(k.(string))
+	if err != nil {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "k is not a valid base64 encoded secret")
+	}
+
+	length := len(b) * 8
+	if length == 0 {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "k length cannot be 0")
+	}
+
+	if hashLength > length {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "k length cannot be less than hash length")
+	}
+
+	if algorithm.Length != length {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "length provided does not match key length")
+	}
+
+	algorithm.Length = length
+
+	ext, ok := jwk["ext"]
+	if ok {
+		if ext.(bool) != extractable {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "ext in key does not match value provided")
+		}
+	}
+
+	kops, ok := jwk["key_ops"]
+	if ok {
+		arr := kops.([]string)
+	loop:
+		for _, op := range arr {
+			for _, usage := range keyUsages {
+				if usage == webcrypto.KeyUsage(op) {
+					continue loop
+				}
+			}
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "key_ops doesn't contain usages provided")
+		}
+	}
+
+	return &CryptoKey{
+		algorithm:   algorithm,
+		extractable: extractable,
+		usages:      keyUsages,
+		secret:      b,
+	}, nil
 }
 
 func importKeyFromRaw(keyData any, algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
