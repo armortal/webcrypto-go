@@ -16,52 +16,6 @@ package webcrypto
 
 import "io"
 
-type Algorithm interface {
-	Name() string
-}
-
-type KeyFormat string
-
-const (
-	Raw                  KeyFormat = "raw"   // Raw format.
-	PKCS8                KeyFormat = "pkcs8" // PKCS #8 format.
-	SubjectPublicKeyInfo KeyFormat = "spki"  // SubjectPublicKeyInfo format.
-	Jwk                  KeyFormat = "jwk"   // JSON Web Key format.
-)
-
-type RsaOtherPrimesInfo struct {
-	// The following fields are defined in Section 6.3.2.7 of JSON Web Algorithms
-	R string `json:"r,omitempty"`
-	D string `json:"d,omitempty"`
-	T string `json:"t,omitempty"`
-}
-
-type JsonWebKey struct {
-	// The following fields are defined in Section 3.1 of JSON Web Key
-	Kty    string     `json:"kty,omitempty"`
-	Use    string     `json:"use,omitempty"`
-	KeyOps []KeyUsage `json:"key_ops,omitempty"`
-	Alg    string     `json:"alg,omitempty"`
-
-	// The following fields are defined in JSON Web Key Parameters Registration
-	Ext bool `json:"ext,omitempty"`
-
-	// The following fields are defined in Section 6 of JSON Web Algorithms
-	Crv string               `json:"crv,omitempty"`
-	X   string               `json:"x,omitempty"`
-	Y   string               `json:"y,omitempty"`
-	D   string               `json:"d,omitempty"`
-	N   string               `json:"n,omitempty"`
-	E   string               `json:"e,omitempty"`
-	P   string               `json:"p,omitempty"`
-	Q   string               `json:"q,omitempty"`
-	Dp  string               `json:"dp,omitempty"`
-	Dq  string               `json:"dq,omitempty"`
-	Qi  string               `json:"qi,omitempty"`
-	Oth []RsaOtherPrimesInfo `json:"oth,omitempty"`
-	K   string               `json:"k,omitempty"`
-}
-
 // SubtleCrypto interface provides a set of methods for dealing with low-level cryptographic primitives and
 // algorithms.
 // See §14. (https://w3c.github.io/webcrypto/#subtlecrypto-interface)
@@ -142,7 +96,7 @@ func (s *subtleCrypto) Decrypt(algorithm Algorithm, key CryptoKey, data io.Reade
 	if err != nil {
 		return nil, err
 	}
-	return subtle.Decrypt(algorithm, key, data)
+	return subtle().Decrypt(algorithm, key, data)
 }
 
 func (s *subtleCrypto) DeriveBits(algorithm Algorithm, baseKey CryptoKey, length uint64) ([]byte, error) {
@@ -150,7 +104,7 @@ func (s *subtleCrypto) DeriveBits(algorithm Algorithm, baseKey CryptoKey, length
 	if err != nil {
 		return nil, err
 	}
-	return subtle.DeriveBits(algorithm, baseKey, length)
+	return subtle().DeriveBits(algorithm, baseKey, length)
 }
 
 func (s *subtleCrypto) DeriveKey(algorithm Algorithm, baseKey CryptoKey, derivedKeyType Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error) {
@@ -158,7 +112,7 @@ func (s *subtleCrypto) DeriveKey(algorithm Algorithm, baseKey CryptoKey, derived
 	if err != nil {
 		return nil, err
 	}
-	return subtle.DeriveKey(algorithm, baseKey, derivedKeyType, extractable, keyUsages...)
+	return subtle().DeriveKey(algorithm, baseKey, derivedKeyType, extractable, keyUsages...)
 }
 
 func (s *subtleCrypto) Digest(algorithm Algorithm, data io.Reader) ([]byte, error) {
@@ -166,7 +120,7 @@ func (s *subtleCrypto) Digest(algorithm Algorithm, data io.Reader) ([]byte, erro
 	if err != nil {
 		return nil, err
 	}
-	return subtle.Digest(algorithm, data)
+	return subtle().Digest(algorithm, data)
 }
 
 func (s *subtleCrypto) Encrypt(algorithm Algorithm, key CryptoKey, data io.Reader) (any, error) {
@@ -174,7 +128,7 @@ func (s *subtleCrypto) Encrypt(algorithm Algorithm, key CryptoKey, data io.Reade
 	if err != nil {
 		return nil, err
 	}
-	return subtle.Encrypt(algorithm, key, data)
+	return subtle().Encrypt(algorithm, key, data)
 
 }
 
@@ -183,7 +137,7 @@ func (s *subtleCrypto) ExportKey(format KeyFormat, key CryptoKey) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return subtle.ExportKey(format, key)
+	return subtle().ExportKey(format, key)
 }
 
 func (s *subtleCrypto) GenerateKey(algorithm Algorithm, extractable bool, keyUsages ...KeyUsage) (any, error) {
@@ -191,7 +145,7 @@ func (s *subtleCrypto) GenerateKey(algorithm Algorithm, extractable bool, keyUsa
 	if err != nil {
 		return nil, err
 	}
-	return subtle.GenerateKey(algorithm, extractable, keyUsages...)
+	return subtle().GenerateKey(algorithm, extractable, keyUsages...)
 }
 
 func (s *subtleCrypto) ImportKey(format KeyFormat, keyData []byte, algorithm Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error) {
@@ -199,7 +153,7 @@ func (s *subtleCrypto) ImportKey(format KeyFormat, keyData []byte, algorithm Alg
 	if err != nil {
 		return nil, err
 	}
-	return subtle.ImportKey(format, keyData, algorithm, extractable, keyUsages...)
+	return subtle().ImportKey(format, keyData, algorithm, extractable, keyUsages...)
 }
 
 func (s *subtleCrypto) Sign(algorithm Algorithm, key CryptoKey, data io.Reader) ([]byte, error) {
@@ -207,7 +161,7 @@ func (s *subtleCrypto) Sign(algorithm Algorithm, key CryptoKey, data io.Reader) 
 	if err != nil {
 		return nil, err
 	}
-	return subtle.Sign(algorithm, key, data)
+	return subtle().Sign(algorithm, key, data)
 }
 
 func (s *subtleCrypto) UnwrapKey(format KeyFormat,
@@ -221,15 +175,15 @@ func (s *subtleCrypto) UnwrapKey(format KeyFormat,
 	if err != nil {
 		return nil, err
 	}
-	return subtle.UnwrapKey(format, wrappedKey, unwrappingKey, unwrapAlgorithm, unwrappedKeyAlgorithm, extractable, keyUsages...)
+	return subtle().UnwrapKey(format, wrappedKey, unwrappingKey, unwrapAlgorithm, unwrappedKeyAlgorithm, extractable, keyUsages...)
 }
 
 func (s *subtleCrypto) Verify(algorithm Algorithm, key CryptoKey, signature []byte, data []byte) (bool, error) {
-	subtle, ok := algorithm.(SubtleCrypto)
-	if !ok {
-		return false, NewError(ErrNotSupportedError, "algorithm does not implement webcrypto.SubtleCrypto")
+	subtle, err := getSubtleCrypto(algorithm)
+	if err != nil {
+		return false, err
 	}
-	return subtle.Verify(algorithm, key, signature, data)
+	return subtle().Verify(algorithm, key, signature, data)
 }
 
 func (s *subtleCrypto) WrapKey(format KeyFormat,
@@ -240,13 +194,5 @@ func (s *subtleCrypto) WrapKey(format KeyFormat,
 	if err != nil {
 		return nil, err
 	}
-	return subtle.WrapKey(format, key, wrappingKey, wrapAlgorithm)
-}
-
-func getSubtleCrypto(algorithm Algorithm) (SubtleCrypto, error) {
-	subtle, ok := algorithm.(SubtleCrypto)
-	if !ok {
-		return nil, NewError(ErrNotSupportedError, "algorithm does not implement webcrypto.SubtleCrypto")
-	}
-	return subtle, nil
+	return subtle().WrapKey(format, key, wrappingKey, wrapAlgorithm)
 }
