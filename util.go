@@ -12,22 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
-
-import (
-	"github.com/armortal/webcrypto-go"
-)
+package webcrypto
 
 // CheckUsages will check if the usages provided are valid usages in the allowed array.
-func AreUsagesValid(allowed []webcrypto.KeyUsage, usages []webcrypto.KeyUsage) bool {
+func AreUsagesValid(allowed []KeyUsage, actual []KeyUsage) error {
 loop:
-	for _, x := range usages {
+	for _, x := range actual {
 		for _, y := range allowed {
 			if x == y {
 				continue loop
 			}
 		}
-		return false
+		return ErrInvalidUsages(allowed...)
 	}
-	return true
+	return nil
 }

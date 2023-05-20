@@ -1,24 +1,19 @@
 package rsa
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"errors"
 	"io"
 	"math/big"
 
 	"github.com/armortal/webcrypto-go"
-	"github.com/armortal/webcrypto-go/util"
 )
 
-type rsaType string
-
 const (
-	rsaOaep rsaType = "RSA-OAEP"
+	rsaOaep string = "RSA-OAEP"
 )
 
 func init() {
-	webcrypto.RegisterAlgorithm(string(rsaOaep), func() webcrypto.SubtleCrypto {
+	webcrypto.RegisterAlgorithm(rsaOaep, func() webcrypto.SubtleCrypto {
 		return &algorithm{
 			rsaType: rsaOaep,
 		}
@@ -33,7 +28,7 @@ var usages = []webcrypto.KeyUsage{
 }
 
 type algorithm struct {
-	rsaType rsaType
+	rsaType string
 }
 
 // KeyGenParams is the model of the dictionary specificationn at
@@ -170,15 +165,32 @@ func (a *algorithm) ExportKey(format webcrypto.KeyFormat, key webcrypto.CryptoKe
 }
 
 func (a *algorithm) GenerateKey(algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (any, error) {
-	// alg, ok := algorithm.(*Algorithm)
-	// if !ok {
-	// 	return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm must be *rsaoaep.Algorithm")
-	// }
-	if !util.AreUsagesValid(usages, keyUsages) {
-		return nil, webcrypto.ErrInvalidUsages(usages...)
+	params, ok := algorithm.(*HashedKeyGenParams)
+	if !ok {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm does *rsa.HashedKeyGenParams")
+	}
+	var keys *CryptoKeyPair
+	var err error
+	switch algorithm.GetName() {
+	case rsaOaep:
+		keys, err = a.generateKeyOaep(params, extractable, usages...)
+	default:
+		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "algorithm name is not a valid RSA algorithm")
+	}
+	return keys, err
+}
+
+// generateKeyOaep will generate a new RSA-OAEP key pair.
+func (a *algorithm) generateKeyOaep(algorithm *HashedKeyGenParams, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKeyPair, error) {
+	if err := webcrypto.AreUsagesValid([]webcrypto.KeyUsage{
+		webcrypto.Encrypt,
+		webcrypto.Decrypt,
+		webcrypto.WrapKey,
+		webcrypto.UnwrapKey,
+	}, keyUsages); err != nil {
+		return nil, err
 	}
 
-	rsa.GenerateKey(rand.Reader, 2)
 	return nil, nil
 }
 
