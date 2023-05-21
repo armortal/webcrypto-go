@@ -6,6 +6,11 @@ An implementation of the W3C Web Cryptography API specification (https://w3c.git
 - [Background](#background)
 - [Implementation status](#implementation-status)
 - [Getting started](#getting-started)
+- [Algorithms](#algorithms)
+	- [HMAC](#hmac)
+	- [RSA-OAEP](#rsa-oaep)
+		- [generateKey](#generatekey)
+
 - [Examples](#examples)
 
 ## Background
@@ -25,6 +30,7 @@ This library is still in active development and all algorithms are not yet suppo
 | Algorithm | Methods | 
 | :-------- | :---------- |
 | **HMAC** | `exportKey`, `generateKey`, `importKey`, `sign`, `verify` |
+| **RSA-OAEP** | `generateKey` |
 | **SHA-1** | `digest` |
 | **SHA-256** | `digest` |
 
@@ -32,7 +38,9 @@ This library is still in active development and all algorithms are not yet suppo
 
 `go get github.com/armortal/webcrypto-go`
 
-### Examples
+## Algorithms
+
+### HMAC
 
 ```go
 package main
@@ -54,6 +62,39 @@ func main() {
 	cryptokey := key.(webcrypto.CryptoKey)
 
 	// do something with cryptoKey
+}
+```
+
+### RSA-OAEP
+
+#### generateKey
+
+```go
+package main
+
+import (
+	"github.com/armortal/webcrypto-go"
+	"github.com/armortal/webcrypto-go/algorithms/rsa"
+)
+
+func main() {
+	key, err := webcrypto.Subtle().GenerateKey(
+		&rsa.HashedKeyGenParams{
+			KeyGenParams: rsa.KeyGenParams{
+				Name:          "RSA-OAEP",
+				ModulusLength: 2048,
+				Exponent:      *big.NewInt(65537),
+			},
+			Hash: "SHA-256",
+		}, true, webcrypto.Decrypt, webcrypto.Encrypt
+
+	if err != nil {
+		panic(err)
+	}
+
+	ckp := key.(webcrypto.CryptoKeyPair)
+
+	// do something with ckp (CryptoKeyPair)
 }
 ```
 
