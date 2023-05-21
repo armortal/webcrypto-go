@@ -17,7 +17,7 @@ package util
 
 import "github.com/armortal/webcrypto-go"
 
-// CheckUsages will check if the usages provided are valid usages in the allowed array.
+// AreUsagesValid will check if the usages provided exist in the usages allowed.
 func AreUsagesValid(allowed []webcrypto.KeyUsage, actual []webcrypto.KeyUsage) error {
 	if len(actual) == 0 && len(allowed) > 0 {
 		return webcrypto.ErrInvalidUsages(allowed...)
