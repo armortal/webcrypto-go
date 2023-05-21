@@ -175,7 +175,7 @@ func TestVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ok, err := subtle.Verify(&Algorithm{}, key, sig, []byte(input))
+	ok, err := subtle.Verify(&Algorithm{}, key, sig, bytes.NewReader([]byte(input)))
 	if err != nil {
 		t.Fatal(err)
 	}

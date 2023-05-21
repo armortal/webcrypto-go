@@ -9,8 +9,8 @@ An implementation of the W3C Web Cryptography API specification (https://www.w3.
 - [Algorithms](#algorithms)
 	- [HMAC](#hmac)
 	- [RSA-OAEP](#rsa-oaep)
-		- [generateKey](#generatekey)
-- [Examples](#examples)
+	- [SHA](#sha)
+- [Contributing](#contributing)
 
 ## Background
 
@@ -51,6 +51,7 @@ import (
 )
 
 func main() {
+	// Generate a new key. A *hmac.CryptoKey is returned which implements webcrypto.CryptoKey
 	key, err := webcrypto.Subtle().GenerateKey(
 		&hmac.Algorithm{
 			KeyGenParams: &hmac.KeyGenParams{
@@ -58,21 +59,53 @@ func main() {
 			},
 		}, true, webcrypto.Sign, webcrypto.Verify)
 
-	if err != nil {
-		panic(err)
-	}
-
 	cryptokey := key.(webcrypto.CryptoKey)
 
-	// do something with cryptoKey
+	// Sign some data. Note that this library uses io.Reader to pass bytes of data.
+	sig, err := webcrypto.Subtle().Sign(
+		&hmac.Algorithm{}, cryptokey, bytes.NewReader([]byte("helloworld")))
+
+	// Verify the signature
+	ok, err := webcrypto.Subtle().Verify(
+		&hmac.Algorithm{}, cryptokey, sig, bytes.NewReader([]byte("helloworld")))
+
+	// Export the key as *webcrypto.JsonWebKey
+	out, err := webcrypto.Subtle().ExportKey(webcrypto.Jwk, cryptoKey)
+	jwk := out.(*webcrypto.JsonWebKey)
+
+	// Export the key as raw bytes
+	out, err := webcrypto.Subtle().ExportKey(webcrypto.Raw, cryptoKey)
+	raw := out.([]byte)
+
+	// Import a JsonWebKey
+	in, err := webcrypto.Subtle().ImportKey(
+		webcrypto.Jwk, 
+		jwk, 
+		&hmac.Algorithm{
+			ImportParams: &hmac.ImportParams{
+				Hash: "SHA-256",
+			},
+		}, 
+		true, 
+		webcrypto.Sign, webcrypto.Verify)
+
+	// Import a key from raw bytes
+	in, err := webcrypto.Subtle().ImportKey(
+		webcrypto.Raw, 
+		raw, 
+		&hmac.Algorithm{
+			ImportParams: &hmac.ImportParams{
+				Hash: "SHA-256",
+			},
+		}, 
+		true, 
+		webcrypto.Sign, webcrypto.Verify)
 }
 ```
 
 ### RSA-OAEP
 
 The **RSA-OAEP** algorithm is the implementation of operations described in [§22](https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep) of the W3C specification.
-
-#### generateKey
 
 ```go
 package main
@@ -83,6 +116,7 @@ import (
 )
 
 func main() {
+	// generateKey
 	key, err := webcrypto.Subtle().GenerateKey(
 		&rsa.Algorithm{
 			Name: "RSA-OAEP",
@@ -121,6 +155,7 @@ import (
 )
 
 func main() {
+	// digest
 	hash, err := webcrypto.Subtle().Digest(
 		&sha.Algorithm{
 			Name: "SHA-256",

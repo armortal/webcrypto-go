@@ -15,7 +15,6 @@
 package hmac
 
 import (
-	"bytes"
 	"crypto/hmac"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -389,8 +388,8 @@ func (a *SubtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
-	act, err := a.Sign(algorithm, key, bytes.NewReader(data))
+func (a *SubtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data io.Reader) (bool, error) {
+	act, err := a.Sign(algorithm, key, data)
 	if err != nil {
 		return false, err
 	}

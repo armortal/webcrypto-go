@@ -121,7 +121,7 @@ func (a *subtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *subtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
+func (a *subtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data io.Reader) (bool, error) {
 	return false, webcrypto.ErrMethodNotSupported()
 }
 

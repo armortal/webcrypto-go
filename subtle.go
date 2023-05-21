@@ -75,7 +75,7 @@ type SubtleCrypto interface {
 
 	// Verify verifies a digital signature.
 	// See §14.2.4 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-verify)
-	Verify(algorithm Algorithm, key CryptoKey, signature []byte, data []byte) (bool, error)
+	Verify(algorithm Algorithm, key CryptoKey, signature []byte, data io.Reader) (bool, error)
 
 	// WrapKey "wraps" a key. This means that it exports the key in an external, portable format, then encrypts
 	// the exported key. Wrapping a key helps protect it in untrusted environments, such as inside an otherwise
@@ -178,7 +178,7 @@ func (s *subtleCrypto) UnwrapKey(format KeyFormat,
 	return subtle().UnwrapKey(format, wrappedKey, unwrappingKey, unwrapAlgorithm, unwrappedKeyAlgorithm, extractable, keyUsages...)
 }
 
-func (s *subtleCrypto) Verify(algorithm Algorithm, key CryptoKey, signature []byte, data []byte) (bool, error) {
+func (s *subtleCrypto) Verify(algorithm Algorithm, key CryptoKey, signature []byte, data io.Reader) (bool, error) {
 	subtle, err := getSubtleCrypto(algorithm)
 	if err != nil {
 		return false, err
