@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.package rsa
 
-// Package rsa implementd RSA algorithms as specified in the algorithm overview
+// Package rsa implements RSA operations as specified in the algorithm overview
 // §19 https://www.w3.org/TR/WebCryptoAPI/#algorithm-overview
 package rsa
 
@@ -24,6 +24,7 @@ import (
 	"math/big"
 
 	"github.com/armortal/webcrypto-go"
+	"github.com/armortal/webcrypto-go/util"
 )
 
 const (
@@ -31,24 +32,30 @@ const (
 )
 
 func init() {
-	webcrypto.RegisterAlgorithm(rsaOaep, func() webcrypto.SubtleCrypto { return &algorithm{} })
+	webcrypto.RegisterAlgorithm(rsaOaep, func() webcrypto.SubtleCrypto { return &SubtleCrypto{} })
 }
 
-type algorithm struct{}
+type SubtleCrypto struct{}
+
+type Algorithm struct {
+	Name               string
+	KeyGenParams       *KeyGenParams
+	HashedKeyGenParams *HashedKeyGenParams
+	HashedImportParams *HashedImportParams
+	OaepParams         *OaepParams
+}
+
+func (a *Algorithm) GetName() string {
+	return a.Name
+}
 
 // KeyGenParams is the model of the dictionary specificationn at
 // §20.3 (https://www.w3.org/TR/WebCryptoAPI/#RsaKeyGenParams-dictionary)
 type KeyGenParams struct {
-	Name string
 	// The length, in bits, of the RSA modulus
 	ModulusLength uint64
 	// The RSA public exponent
-	Exponent big.Int
-}
-
-// GetName implements webcrypto.Algorithm interface.
-func (p *KeyGenParams) GetName() string {
-	return p.Name
+	PublicExponent big.Int
 }
 
 // HashedKeyGenParams is the model of the dictionary specificationn at
@@ -78,10 +85,6 @@ type OaepParams struct {
 	Label []byte
 }
 
-func (p *OaepParams) GetName() string {
-	return string(rsaOaep)
-}
-
 // HashedKeyAlgorithm implements the RsaHashedKeyAlgorithm dictionary specification at
 // §20.6 (https://www.w3.org/TR/WebCryptoAPI/#RsaHashedKeyAlgorithm-dictionary)
 type HashedKeyAlgorithm struct {
@@ -93,13 +96,8 @@ type HashedKeyAlgorithm struct {
 // HashedImportParams implements the RsaHashedImportParams dictionary specification at
 // §20.7 (https://www.w3.org/TR/WebCryptoAPI/#RsaHashedImportParams-dictionary)
 type HashedImportParams struct {
-	Name string
 	// The hash algorithm to use
 	Hash string
-}
-
-func (p *HashedImportParams) GetName() string {
-	return p.Name
 }
 
 type CryptoKeyPair struct {
@@ -143,32 +141,32 @@ func (c *CryptoKey) Usages() []webcrypto.KeyUsage {
 	return c.usages
 }
 
-func (a *algorithm) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
+func (a *SubtleCrypto) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
 	return nil, errors.New("unimplemented")
 }
 
-func (a *algorithm) DeriveBits(algorithm webcrypto.Algorithm, baseKey webcrypto.CryptoKey, length uint64) ([]byte, error) {
+func (a *SubtleCrypto) DeriveBits(algorithm webcrypto.Algorithm, baseKey webcrypto.CryptoKey, length uint64) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *algorithm) DeriveKey(algorithm webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+func (a *SubtleCrypto) DeriveKey(algorithm webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *algorithm) Digest(algorithm webcrypto.Algorithm, data io.Reader) ([]byte, error) {
+func (a *SubtleCrypto) Digest(algorithm webcrypto.Algorithm, data io.Reader) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *algorithm) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
+func (a *SubtleCrypto) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
 	return nil, errors.New("unimplemented")
 }
 
-func (a *algorithm) ExportKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey) (any, error) {
+func (a *SubtleCrypto) ExportKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey) (any, error) {
 	return nil, errors.New("unimplemented")
 }
 
-func (a *algorithm) GenerateKey(algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (any, error) {
-	params, ok := algorithm.(*HashedKeyGenParams)
+func (a *SubtleCrypto) GenerateKey(algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (any, error) {
+	alg, ok := algorithm.(*Algorithm)
 	if !ok {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm does *rsa.HashedKeyGenParams")
 	}
@@ -176,7 +174,7 @@ func (a *algorithm) GenerateKey(algorithm webcrypto.Algorithm, extractable bool,
 	var err error
 	switch algorithm.GetName() {
 	case rsaOaep:
-		keys, err = a.generateKeyOaep(params, extractable, keyUsages...)
+		keys, err = a.generateKeyOaep(alg.HashedKeyGenParams, extractable, keyUsages...)
 	default:
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "algorithm name is not a valid RSA algorithm")
 	}
@@ -185,9 +183,9 @@ func (a *algorithm) GenerateKey(algorithm webcrypto.Algorithm, extractable bool,
 
 // generateKeyOaep will generate a new RSA-OAEP key pair. The method of generating a key is specified at
 // §22.4 generateKey (https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep-operations)
-func (a *algorithm) generateKeyOaep(algorithm *HashedKeyGenParams, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKeyPair, error) {
+func (a *SubtleCrypto) generateKeyOaep(algorithm *HashedKeyGenParams, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKeyPair, error) {
 	// If usages contains an entry which is not "encrypt", "decrypt", "wrapKey" or "unwrapKey", then throw a SyntaxError.
-	if err := webcrypto.AreUsagesValid([]webcrypto.KeyUsage{
+	if err := util.AreUsagesValid([]webcrypto.KeyUsage{
 		webcrypto.Encrypt,
 		webcrypto.Decrypt,
 		webcrypto.WrapKey,
@@ -198,7 +196,7 @@ func (a *algorithm) generateKeyOaep(algorithm *HashedKeyGenParams, extractable b
 
 	// Generate an RSA key pair. The exponent needs to be 65536 because we cannot
 	// generate a key with crypto/rsa using a different exponent
-	if algorithm.Exponent.Int64() != 65537 {
+	if algorithm.PublicExponent.Int64() != 65537 {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "exponent must be 65536")
 	}
 
@@ -212,7 +210,7 @@ func (a *algorithm) generateKeyOaep(algorithm *HashedKeyGenParams, extractable b
 		KeyAlgorithm: KeyAlgorithm{
 			Name:           rsaOaep,
 			ModulusLength:  algorithm.ModulusLength,
-			PublicExponent: algorithm.Exponent,
+			PublicExponent: algorithm.PublicExponent,
 		},
 		Hash: algorithm.Hash,
 	}
@@ -222,7 +220,7 @@ func (a *algorithm) generateKeyOaep(algorithm *HashedKeyGenParams, extractable b
 		pub:    key.PublicKey,
 		alg:    alg,
 		ext:    true,
-		usages: webcrypto.UsageIntersection([]webcrypto.KeyUsage{webcrypto.Encrypt, webcrypto.WrapKey}, keyUsages),
+		usages: util.UsageIntersection([]webcrypto.KeyUsage{webcrypto.Encrypt, webcrypto.WrapKey}, keyUsages),
 	}
 
 	// Create the CryptoKey object for the private key
@@ -230,7 +228,7 @@ func (a *algorithm) generateKeyOaep(algorithm *HashedKeyGenParams, extractable b
 		isPrivate: true,
 		ext:       extractable,
 		priv:      key,
-		usages:    webcrypto.UsageIntersection([]webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.UnwrapKey}, keyUsages),
+		usages:    util.UsageIntersection([]webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.UnwrapKey}, keyUsages),
 	}
 
 	return &CryptoKeyPair{
@@ -239,15 +237,15 @@ func (a *algorithm) generateKeyOaep(algorithm *HashedKeyGenParams, extractable b
 	}, nil
 }
 
-func (a *algorithm) ImportKey(format webcrypto.KeyFormat, keyData []byte, algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+func (a *SubtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, errors.New("unimplemented")
 }
 
-func (a *algorithm) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) ([]byte, error) {
+func (a *SubtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *algorithm) UnwrapKey(format webcrypto.KeyFormat,
+func (a *SubtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
 	wrappedKey []byte,
 	unwrappingKey webcrypto.CryptoKey,
 	unwrapAlgorithm webcrypto.Algorithm,
@@ -257,10 +255,10 @@ func (a *algorithm) UnwrapKey(format webcrypto.KeyFormat,
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *algorithm) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
+func (a *SubtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
 	return false, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *algorithm) WrapKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey, wrappingKey webcrypto.CryptoKey, wrapAlgorithm webcrypto.Algorithm) (any, error) {
+func (a *SubtleCrypto) WrapKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey, wrappingKey webcrypto.CryptoKey, wrapAlgorithm webcrypto.Algorithm) (any, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }

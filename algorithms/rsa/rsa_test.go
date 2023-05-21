@@ -22,16 +22,18 @@ import (
 )
 
 func TestOaep_GenerateKey(t *testing.T) {
-	alg := &algorithm{}
+	subtle := &SubtleCrypto{}
 
 	t.Run("generate successful key pair", func(t *testing.T) {
-		key, err := alg.GenerateKey(&HashedKeyGenParams{
-			KeyGenParams: KeyGenParams{
-				Name:          "RSA-OAEP",
-				ModulusLength: 2048,
-				Exponent:      *big.NewInt(65537),
+		key, err := subtle.GenerateKey(&Algorithm{
+			Name: "RSA-OAEP",
+			HashedKeyGenParams: &HashedKeyGenParams{
+				KeyGenParams: KeyGenParams{
+					ModulusLength:  2048,
+					PublicExponent: *big.NewInt(65537),
+				},
+				Hash: "SHA-256",
 			},
-			Hash: "SHA-256",
 		}, true, webcrypto.Decrypt, webcrypto.Encrypt)
 		if err != nil {
 			t.Fatal(err)
@@ -79,13 +81,15 @@ func TestOaep_GenerateKey(t *testing.T) {
 	})
 
 	t.Run("invalid exponent", func(t *testing.T) {
-		_, err := alg.GenerateKey(&HashedKeyGenParams{
-			KeyGenParams: KeyGenParams{
-				Name:          "RSA-OAEP",
-				ModulusLength: 2048,
-				Exponent:      *big.NewInt(65536),
+		_, err := subtle.GenerateKey(&Algorithm{
+			Name: "RSA-OAEP",
+			HashedKeyGenParams: &HashedKeyGenParams{
+				KeyGenParams: KeyGenParams{
+					ModulusLength:  2048,
+					PublicExponent: *big.NewInt(65536),
+				},
+				Hash: "SHA-256",
 			},
-			Hash: "SHA-256",
 		}, true)
 		if err == nil {
 			t.Fatal("error should have been returned")
@@ -93,13 +97,15 @@ func TestOaep_GenerateKey(t *testing.T) {
 	})
 
 	t.Run("invalid usages", func(t *testing.T) {
-		_, err := alg.GenerateKey(&HashedKeyGenParams{
-			KeyGenParams: KeyGenParams{
-				Name:          "RSA-OAEP",
-				ModulusLength: 2048,
-				Exponent:      *big.NewInt(65537),
+		_, err := subtle.GenerateKey(&Algorithm{
+			Name: "RSA-OAEP",
+			HashedKeyGenParams: &HashedKeyGenParams{
+				KeyGenParams: KeyGenParams{
+					ModulusLength:  2048,
+					PublicExponent: *big.NewInt(65537),
+				},
+				Hash: "SHA-256",
 			},
-			Hash: "SHA-256",
 		}, true)
 		if err == nil {
 			t.Fatal("error should have been returned")
@@ -107,13 +113,15 @@ func TestOaep_GenerateKey(t *testing.T) {
 	})
 
 	t.Run("invalid algorithm name", func(t *testing.T) {
-		_, err := alg.GenerateKey(&HashedKeyGenParams{
-			KeyGenParams: KeyGenParams{
-				Name:          "RSA-OAEP-invalid-name",
-				ModulusLength: 2048,
-				Exponent:      *big.NewInt(65537),
+		_, err := subtle.GenerateKey(&Algorithm{
+			Name: "RSA-OAEP-invalid-name",
+			HashedKeyGenParams: &HashedKeyGenParams{
+				KeyGenParams: KeyGenParams{
+					ModulusLength:  2048,
+					PublicExponent: *big.NewInt(65537),
+				},
+				Hash: "SHA-256",
 			},
-			Hash: "SHA-256",
 		}, true)
 		if err == nil {
 			t.Fatal("error should have been returned")

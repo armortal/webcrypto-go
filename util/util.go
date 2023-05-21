@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package webcrypto
+// Package util contains utility functions.
+package util
 
-// CheckUsages will check if the usages provided are valid usages in the allowed array.
-func AreUsagesValid(allowed []KeyUsage, actual []KeyUsage) error {
+import "github.com/armortal/webcrypto-go"
+
+// AreUsagesValid will check if the usages provided exist in the usages allowed.
+func AreUsagesValid(allowed []webcrypto.KeyUsage, actual []webcrypto.KeyUsage) error {
 	if len(actual) == 0 && len(allowed) > 0 {
-		return ErrInvalidUsages(allowed...)
+		return webcrypto.ErrInvalidUsages(allowed...)
 	}
 loop:
 	for _, x := range actual {
@@ -26,14 +29,14 @@ loop:
 				continue loop
 			}
 		}
-		return ErrInvalidUsages(allowed...)
+		return webcrypto.ErrInvalidUsages(allowed...)
 	}
 	return nil
 }
 
 // UsageIntersection returns the intersection of v1 and v2 values.
-func UsageIntersection(v1 []KeyUsage, v2 []KeyUsage) []KeyUsage {
-	i := make([]KeyUsage, 0)
+func UsageIntersection(v1 []webcrypto.KeyUsage, v2 []webcrypto.KeyUsage) []webcrypto.KeyUsage {
+	i := make([]webcrypto.KeyUsage, 0)
 	for _, x := range v1 {
 		for _, y := range v2 {
 			if x == y {
