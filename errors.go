@@ -67,13 +67,19 @@ func (e *errorInternal) Message() string {
 	return e.message
 }
 
+// ErrMethodNotSupported helper function that returns an ErrNotSupportedError.
 func ErrMethodNotSupported() Error {
 	return NewError(ErrNotSupportedError, "method not supported")
 }
 
+// ErrInvalidUsages helper function that returns a ErrSyntaxError for invalid usages.
 func ErrInvalidUsages(allowed ...KeyUsage) Error {
 	usages := ""
 	for _, v := range allowed {
+		if usages == "" {
+			usages = string(v)
+			continue
+		}
 		usages = fmt.Sprintf("%s,%s", usages, v)
 	}
 	return NewError(ErrSyntaxError, fmt.Sprintf("[%s] are the only valid usages", usages))
