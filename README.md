@@ -27,10 +27,10 @@ The documentation and references used throughout this library come from the amaz
 This library is still in active development and all algorithms are not yet supported. While we continue working on implementations that we think are priority, we welcome feedback and contributions from our open-source community. Below are algorithms and their usages that have been implemented.
 
 | Algorithm | encrypt | decrypt | sign | verify | digest | generateKey | deriveKey | deriveBits | importKey | exportKey | wrapKey | unwrapKey | 
-| :---------------------: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | 
-| **HMAC** |||:white_check_mark:|:white_check_mark:||:white_check_mark:|||:white_check_mark:|:white_check_mark:|||
-| **RSA-OAEP** ||||||:white_check_mark:|||||||
-| **SHA** |||||:white_check_mark:||||||||
+| :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | 
+| [HMAC](#hmac) |||:white_check_mark:|:white_check_mark:||:white_check_mark:|||:white_check_mark:|:white_check_mark:|||
+| [RSA-OAEP](#rsa-oaep) ||||||:white_check_mark:|||||||
+| [SHA](#sha) |||||:white_check_mark:||||||||
 
 ## Getting started
 
@@ -39,6 +39,8 @@ This library is still in active development and all algorithms are not yet suppo
 ## Algorithms
 
 ### HMAC
+
+The **HMAC** algorithm is the implementation of operations described in [§29](https://www.w3.org/TR/WebCryptoAPI/#hmac) of the W3C specification.
 
 ```go
 package main
@@ -65,7 +67,7 @@ func main() {
 
 ### RSA-OAEP
 
-The [RSA-OAEP](https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep) algorithm can be used by importing `github.com/armortal/webcrypto-go/algorithms/rsa`. The following shows the RSA-OAEP objects that are used in this library.
+The **RSA-OAEP** algorithm is the implementation of operations described in [§22](https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep) of the W3C specification. Below are the types used in this library for the parameters and results of each of the operations.
 
 | Operation	| Parameters | Result |
 | :-------- | :--------- | :----- |
@@ -94,7 +96,7 @@ func main() {
 				Exponent:      *big.NewInt(65537),
 			},
 			Hash: "SHA-256",
-		}, true, webcrypto.Decrypt, webcrypto.Encrypt
+		}, true, webcrypto.Decrypt, webcrypto.Encrypt)
 
 	if err != nil {
 		panic(err)
@@ -105,6 +107,35 @@ func main() {
 	// do something with ckp (CryptoKeyPair)
 }
 ```
+
+## SHA
+
+The **SHA** algorithm is the implementation of operations described in [§30](https://www.w3.org/TR/WebCryptoAPI/#sha) of the W3C specification.
+
+The implementation in this library uses Go's `io.Reader` as the input to the `digest` method.
+
+```go
+package main
+
+import (
+	"github.com/armortal/webcrypto-go"
+	"github.com/armortal/webcrypto-go/algorithms/sha"
+)
+
+func main() {
+	hash, err := webcrypto.Subtle().Digest(
+		&sha.Algorithm{
+			Name: "SHA-256",
+		}, bytes.NewReader([]byte("helloworld")))
+
+	if err != nil {
+		panic(err)
+	}
+
+	// do something with hash
+}
+```
+
 
 ## Contributing
 
