@@ -24,6 +24,7 @@ import (
 	"math/big"
 
 	"github.com/armortal/webcrypto-go"
+	"github.com/armortal/webcrypto-go/util"
 )
 
 const (
@@ -187,7 +188,7 @@ func (a *algorithm) GenerateKey(algorithm webcrypto.Algorithm, extractable bool,
 // §22.4 generateKey (https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep-operations)
 func (a *algorithm) generateKeyOaep(algorithm *HashedKeyGenParams, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKeyPair, error) {
 	// If usages contains an entry which is not "encrypt", "decrypt", "wrapKey" or "unwrapKey", then throw a SyntaxError.
-	if err := webcrypto.AreUsagesValid([]webcrypto.KeyUsage{
+	if err := util.AreUsagesValid([]webcrypto.KeyUsage{
 		webcrypto.Encrypt,
 		webcrypto.Decrypt,
 		webcrypto.WrapKey,
@@ -222,7 +223,7 @@ func (a *algorithm) generateKeyOaep(algorithm *HashedKeyGenParams, extractable b
 		pub:    key.PublicKey,
 		alg:    alg,
 		ext:    true,
-		usages: webcrypto.UsageIntersection([]webcrypto.KeyUsage{webcrypto.Encrypt, webcrypto.WrapKey}, keyUsages),
+		usages: util.UsageIntersection([]webcrypto.KeyUsage{webcrypto.Encrypt, webcrypto.WrapKey}, keyUsages),
 	}
 
 	// Create the CryptoKey object for the private key
@@ -230,7 +231,7 @@ func (a *algorithm) generateKeyOaep(algorithm *HashedKeyGenParams, extractable b
 		isPrivate: true,
 		ext:       extractable,
 		priv:      key,
-		usages:    webcrypto.UsageIntersection([]webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.UnwrapKey}, keyUsages),
+		usages:    util.UsageIntersection([]webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.UnwrapKey}, keyUsages),
 	}
 
 	return &CryptoKeyPair{
@@ -239,7 +240,7 @@ func (a *algorithm) generateKeyOaep(algorithm *HashedKeyGenParams, extractable b
 	}, nil
 }
 
-func (a *algorithm) ImportKey(format webcrypto.KeyFormat, keyData []byte, algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+func (a *algorithm) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, errors.New("unimplemented")
 }
 

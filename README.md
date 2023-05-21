@@ -10,7 +10,6 @@ An implementation of the W3C Web Cryptography API specification (https://www.w3.
 	- [HMAC](#hmac)
 	- [RSA-OAEP](#rsa-oaep)
 		- [generateKey](#generatekey)
-
 - [Examples](#examples)
 
 ## Background

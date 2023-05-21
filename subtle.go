@@ -55,7 +55,7 @@ type SubtleCrypto interface {
 	// ImportKey imports a key: that is, it takes as input a key in an external, portable format and
 	// gives you a CryptoKey object that you can use in the Web Crypto API.
 	// See §14.2.9 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-importKey)
-	ImportKey(format KeyFormat, keyData []byte, algorithm Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error)
+	ImportKey(format KeyFormat, keyData any, algorithm Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error)
 
 	// Sign generates a digital signature.
 	// See §14.2.3 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-sign)
@@ -148,7 +148,7 @@ func (s *subtleCrypto) GenerateKey(algorithm Algorithm, extractable bool, keyUsa
 	return subtle().GenerateKey(algorithm, extractable, keyUsages...)
 }
 
-func (s *subtleCrypto) ImportKey(format KeyFormat, keyData []byte, algorithm Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error) {
+func (s *subtleCrypto) ImportKey(format KeyFormat, keyData any, algorithm Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error) {
 	subtle, err := getSubtleCrypto(algorithm)
 	if err != nil {
 		return nil, err
