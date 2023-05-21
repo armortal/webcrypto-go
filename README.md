@@ -1,4 +1,5 @@
-# webcrypto-go
+# webcrypto-go [![test](https://github.com/armortal/webcrypto-go/actions/workflows/test.yaml/badge.svg)](https://github.com/armortal/webcrypto-go/actions/workflows/test.yaml)
+
 An implementation of the W3C Web Cryptography API specification (https://www.w3.org/TR/WebCryptoAPI/) for Go.
 
 ## Contents
