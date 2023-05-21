@@ -1,6 +1,24 @@
+// Copyright 2023 ARMORTAL TECHNOLOGIES PTY LTD
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// 	http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.package rsa
+
+// Package rsa implementd RSA algorithms as specified in the algorithm overview
+// §19 https://www.w3.org/TR/WebCryptoAPI/#algorithm-overview
 package rsa
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"errors"
 	"io"
 	"math/big"
@@ -13,23 +31,10 @@ const (
 )
 
 func init() {
-	webcrypto.RegisterAlgorithm(rsaOaep, func() webcrypto.SubtleCrypto {
-		return &algorithm{
-			rsaType: rsaOaep,
-		}
-	})
+	webcrypto.RegisterAlgorithm(rsaOaep, func() webcrypto.SubtleCrypto { return &algorithm{} })
 }
 
-var usages = []webcrypto.KeyUsage{
-	webcrypto.Encrypt,
-	webcrypto.Decrypt,
-	webcrypto.WrapKey,
-	webcrypto.UnwrapKey,
-}
-
-type algorithm struct {
-	rsaType string
-}
+type algorithm struct{}
 
 // KeyGenParams is the model of the dictionary specificationn at
 // §20.3 (https://www.w3.org/TR/WebCryptoAPI/#RsaKeyGenParams-dictionary)
@@ -60,7 +65,7 @@ type KeyAlgorithm struct {
 	// The length, in bits, of the RSA modulus
 	ModulusLength uint64
 	// The RSA public exponent
-	Exponent big.Int
+	PublicExponent big.Int
 }
 
 func (k *KeyAlgorithm) GetName() string {
@@ -82,7 +87,7 @@ func (p *OaepParams) GetName() string {
 type HashedKeyAlgorithm struct {
 	KeyAlgorithm
 	// The hash algorithm that is used with this key
-	Hash webcrypto.KeyAlgorithm
+	Hash string
 }
 
 // HashedImportParams implements the RsaHashedImportParams dictionary specification at
@@ -112,9 +117,11 @@ func (c *CryptoKeyPair) PrivateKey() webcrypto.CryptoKey {
 
 type CryptoKey struct {
 	isPrivate bool
-	// alg       *Algorithm
-	ext    bool
-	usages []webcrypto.KeyUsage
+	pub       rsa.PublicKey
+	priv      *rsa.PrivateKey
+	alg       *HashedKeyAlgorithm
+	ext       bool
+	usages    []webcrypto.KeyUsage
 }
 
 func (c *CryptoKey) Type() webcrypto.KeyType {
@@ -135,10 +142,6 @@ func (c *CryptoKey) Algorithm() webcrypto.Algorithm {
 func (c *CryptoKey) Usages() []webcrypto.KeyUsage {
 	return c.usages
 }
-
-// func (a *Algorithm) Name() string {
-// 	return "RSA-OAEP"
-// }
 
 func (a *algorithm) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
 	return nil, errors.New("unimplemented")
@@ -173,15 +176,17 @@ func (a *algorithm) GenerateKey(algorithm webcrypto.Algorithm, extractable bool,
 	var err error
 	switch algorithm.GetName() {
 	case rsaOaep:
-		keys, err = a.generateKeyOaep(params, extractable, usages...)
+		keys, err = a.generateKeyOaep(params, extractable, keyUsages...)
 	default:
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "algorithm name is not a valid RSA algorithm")
 	}
 	return keys, err
 }
 
-// generateKeyOaep will generate a new RSA-OAEP key pair.
+// generateKeyOaep will generate a new RSA-OAEP key pair. The method of generating a key is specified at
+// §22.4 generateKey (https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep-operations)
 func (a *algorithm) generateKeyOaep(algorithm *HashedKeyGenParams, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKeyPair, error) {
+	// If usages contains an entry which is not "encrypt", "decrypt", "wrapKey" or "unwrapKey", then throw a SyntaxError.
 	if err := webcrypto.AreUsagesValid([]webcrypto.KeyUsage{
 		webcrypto.Encrypt,
 		webcrypto.Decrypt,
@@ -191,7 +196,47 @@ func (a *algorithm) generateKeyOaep(algorithm *HashedKeyGenParams, extractable b
 		return nil, err
 	}
 
-	return nil, nil
+	// Generate an RSA key pair. The exponent needs to be 65536 because we cannot
+	// generate a key with crypto/rsa using a different exponent
+	if algorithm.Exponent.Int64() != 65537 {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "exponent must be 65536")
+	}
+
+	key, err := rsa.GenerateKey(rand.Reader, int(algorithm.ModulusLength))
+	if err != nil {
+		return nil, webcrypto.NewError(webcrypto.ErrOperationError, err.Error())
+	}
+
+	// Create the new HashedKeyAlgorithm object.
+	alg := &HashedKeyAlgorithm{
+		KeyAlgorithm: KeyAlgorithm{
+			Name:           rsaOaep,
+			ModulusLength:  algorithm.ModulusLength,
+			PublicExponent: algorithm.Exponent,
+		},
+		Hash: algorithm.Hash,
+	}
+
+	// Create the CryptoKey object for the public key
+	pub := &CryptoKey{
+		pub:    key.PublicKey,
+		alg:    alg,
+		ext:    true,
+		usages: webcrypto.UsageIntersection([]webcrypto.KeyUsage{webcrypto.Encrypt, webcrypto.WrapKey}, keyUsages),
+	}
+
+	// Create the CryptoKey object for the private key
+	priv := &CryptoKey{
+		isPrivate: true,
+		ext:       extractable,
+		priv:      key,
+		usages:    webcrypto.UsageIntersection([]webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.UnwrapKey}, keyUsages),
+	}
+
+	return &CryptoKeyPair{
+		publicKey:  pub,
+		privateKey: priv,
+	}, nil
 }
 
 func (a *algorithm) ImportKey(format webcrypto.KeyFormat, keyData []byte, algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
