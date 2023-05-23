@@ -19,6 +19,8 @@ package rsa
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"io"
 	"math/big"
@@ -29,6 +31,10 @@ import (
 
 const (
 	rsaOaep string = "RSA-OAEP"
+)
+
+var (
+	encoding = base64.RawURLEncoding
 )
 
 func init() {
@@ -162,7 +168,73 @@ func (a *SubtleCrypto) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.Cryp
 }
 
 func (a *SubtleCrypto) ExportKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey) (any, error) {
-	return nil, errors.New("unimplemented")
+	ckp, ok := key.(*CryptoKey)
+	if !ok {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "key must be *rsa.CryptoKey")
+	}
+	switch format {
+	case webcrypto.PKCS8:
+		return a.exportKeyPKCS8(ckp)
+	case webcrypto.Jwk:
+		return a.exportKeyJwk(ckp)
+	default:
+		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "key format not supported")
+	}
+}
+
+// exportKeyPKCS8 exports the key as PKCS8 format. The method of exporting as PKCS8 is specified at
+// §22.4 exportKey (https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep-operations)
+func (a *SubtleCrypto) exportKeyPKCS8(key *CryptoKey) ([]byte, error) {
+	if !key.isPrivate {
+		return nil, webcrypto.NewError(webcrypto.ErrInvalidAccessError, "key is not private")
+
+	}
+	return x509.MarshalPKCS8PrivateKey(key.priv)
+}
+
+// exportKeyJwk exports the key as webcrypto.JsonWebKey. The method of exporting as jwk is specified at
+// §22.4 exportKey (https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep-operations)
+func (a *SubtleCrypto) exportKeyJwk(key *CryptoKey) (*webcrypto.JsonWebKey, error) {
+	jwk := &webcrypto.JsonWebKey{
+		Kty:    "RSA",
+		Ext:    key.ext,
+		KeyOps: key.usages,
+	}
+
+	switch key.alg.Name {
+	case rsaOaep:
+		switch key.alg.Hash {
+		case "SHA-1":
+			jwk.Alg = "RSA-OAEP"
+		case "SHA-256":
+			jwk.Alg = "RSA-OAEP-256"
+		case "SHA-384":
+			jwk.Alg = "RSA-OAEP-384"
+		case "SHA-512":
+			jwk.Alg = "RSA-OAEP-512"
+		default:
+			panic("invalid algorithm hash") // we should never have an unknown hash once a key has been generated
+		}
+	default:
+		panic("invalid algorithm name")
+	}
+
+	if key.isPrivate {
+		jwk.N = encoding.EncodeToString(key.priv.N.Bytes())
+		jwk.E = encoding.EncodeToString(big.NewInt(int64(key.priv.E)).Bytes())
+		jwk.D = encoding.EncodeToString(key.priv.D.Bytes())
+		jwk.P = encoding.EncodeToString(key.priv.Primes[0].Bytes())
+		jwk.Q = encoding.EncodeToString(key.priv.Primes[1].Bytes())
+		// precompute dp, dq, di
+		key.priv.Precompute()
+		jwk.Dp = encoding.EncodeToString(key.priv.Precomputed.Dp.Bytes())
+		jwk.Dq = encoding.EncodeToString(key.priv.Precomputed.Dq.Bytes())
+		jwk.Qi = encoding.EncodeToString(key.priv.Precomputed.Qinv.Bytes())
+	} else {
+		jwk.N = encoding.EncodeToString(key.pub.N.Bytes())
+		jwk.E = encoding.EncodeToString(big.NewInt(int64(key.pub.E)).Bytes())
+	}
+	return jwk, nil
 }
 
 func (a *SubtleCrypto) GenerateKey(algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (any, error) {
@@ -226,6 +298,7 @@ func (a *SubtleCrypto) generateKeyOaep(algorithm *HashedKeyGenParams, extractabl
 	// Create the CryptoKey object for the private key
 	priv := &CryptoKey{
 		isPrivate: true,
+		alg:       alg,
 		ext:       extractable,
 		priv:      key,
 		usages:    util.UsageIntersection([]webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.UnwrapKey}, keyUsages),
