@@ -79,6 +79,8 @@ type KeyAlgorithm struct {
 	ModulusLength uint64
 	// The RSA public exponent
 	PublicExponent big.Int
+
+	*HashedKeyAlgorithm
 }
 
 func (k *KeyAlgorithm) GetName() string {
@@ -123,7 +125,7 @@ type CryptoKey struct {
 	isPrivate bool
 	pub       rsa.PublicKey
 	priv      *rsa.PrivateKey
-	alg       *HashedKeyAlgorithm
+	alg       *KeyAlgorithm
 	ext       bool
 	usages    []webcrypto.KeyUsage
 }
@@ -240,7 +242,7 @@ func (a *SubtleCrypto) exportKeyJwk(key *CryptoKey) (*webcrypto.JsonWebKey, erro
 func (a *SubtleCrypto) GenerateKey(algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (any, error) {
 	alg, ok := algorithm.(*Algorithm)
 	if !ok {
-		return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm does *rsa.HashedKeyGenParams")
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm must be *rsa.HashedKeyGenParams")
 	}
 	var keys *CryptoKeyPair
 	var err error
@@ -278,13 +280,13 @@ func (a *SubtleCrypto) generateKeyOaep(algorithm *HashedKeyGenParams, extractabl
 	}
 
 	// Create the new HashedKeyAlgorithm object.
-	alg := &HashedKeyAlgorithm{
-		KeyAlgorithm: KeyAlgorithm{
-			Name:           rsaOaep,
-			ModulusLength:  algorithm.ModulusLength,
-			PublicExponent: algorithm.PublicExponent,
+	alg := &KeyAlgorithm{
+		Name:           rsaOaep,
+		ModulusLength:  algorithm.ModulusLength,
+		PublicExponent: algorithm.PublicExponent,
+		HashedKeyAlgorithm: &HashedKeyAlgorithm{
+			Hash: algorithm.Hash,
 		},
-		Hash: algorithm.Hash,
 	}
 
 	// Create the CryptoKey object for the public key
@@ -311,7 +313,77 @@ func (a *SubtleCrypto) generateKeyOaep(algorithm *HashedKeyGenParams, extractabl
 }
 
 func (a *SubtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
-	return nil, errors.New("unimplemented")
+	alg, ok := algorithm.(*Algorithm)
+	if !ok {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm must be *rsa.Algorithm")
+	}
+
+	if alg.HashedImportParams == nil {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "HashedImportParams is required")
+	}
+
+	switch format {
+	case webcrypto.Jwk:
+		jwk, ok := keyData.(*webcrypto.JsonWebKey)
+		if !ok {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "keyData must be *webcrypto.JsonWebKey")
+		}
+		return a.importKeyJwk(jwk, alg, extractable, keyUsages...)
+	case webcrypto.PKCS8:
+		b, ok := keyData.([]byte)
+		if !ok {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "keyData must be []byte")
+		}
+		return a.importKeyPKCS8(b, alg, extractable, keyUsages...)
+	default:
+		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "key format not supported")
+	}
+}
+
+// importKeyPKCS8 will import DER encoded private key. The method of generating a key is specified at
+// §22.4 importKey (https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep-operations).
+//
+// Although the specification states that we should first analyse the private key info as we construct our
+// crypto key, the standard go library doesn't support access to the underlying pkcs8 struct so
+// the implementation in this library will take these values from the algorithm provided in the params.
+func (a *SubtleCrypto) importKeyPKCS8(keyData []byte, algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+	if err := util.AreUsagesValid(
+		[]webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.UnwrapKey}, keyUsages); err != nil {
+		return nil, err
+	}
+
+	key, err := x509.ParsePKCS8PrivateKey(keyData)
+	if err != nil {
+		return nil, err
+	}
+
+	ck := &CryptoKey{
+		isPrivate: true,
+		usages:    keyUsages,
+		ext:       extractable,
+	}
+
+	switch algorithm.Name {
+	case rsaOaep:
+		r := key.(*rsa.PrivateKey)
+		ck.priv = r
+		ck.alg = &KeyAlgorithm{
+			Name: rsaOaep,
+			HashedKeyAlgorithm: &HashedKeyAlgorithm{
+				Hash: algorithm.HashedImportParams.Hash,
+			},
+			ModulusLength:  uint64(r.N.BitLen()),
+			PublicExponent: *big.NewInt(int64(r.E)),
+		}
+	default:
+		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "algorithm name not supported")
+	}
+
+	return ck, nil
+}
+
+func (a *SubtleCrypto) importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+	return nil, nil
 }
 
 func (a *SubtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) ([]byte, error) {
