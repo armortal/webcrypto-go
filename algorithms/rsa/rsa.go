@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 
@@ -96,7 +97,6 @@ type OaepParams struct {
 // HashedKeyAlgorithm implements the RsaHashedKeyAlgorithm dictionary specification at
 // §20.6 (https://www.w3.org/TR/WebCryptoAPI/#RsaHashedKeyAlgorithm-dictionary)
 type HashedKeyAlgorithm struct {
-	KeyAlgorithm
 	// The hash algorithm that is used with this key
 	Hash string
 }
@@ -340,7 +340,7 @@ func (a *SubtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algori
 	}
 }
 
-// importKeyPKCS8 will import DER encoded private key. The method of generating a key is specified at
+// importKeyPKCS8 will import DER encoded private key. The method of importing a PKCS8 key is specified at
 // §22.4 importKey (https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep-operations).
 //
 // Although the specification states that we should first analyse the private key info as we construct our
@@ -382,8 +382,143 @@ func (a *SubtleCrypto) importKeyPKCS8(keyData []byte, algorithm *Algorithm, extr
 	return ck, nil
 }
 
+// importKeyJwk will import a JWK. The method of importing JWK is specified at
+// §22.4 importKey (https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep-operations).
 func (a *SubtleCrypto) importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
-	return nil, nil
+	// If the "d" field of jwk is present and usages contains an entry which is
+	// not "decrypt" or "unwrapKey", then throw a SyntaxError.
+	if keyData.D != "" {
+		if err := util.AreUsagesValid([]webcrypto.KeyUsage{
+			webcrypto.Decrypt, webcrypto.UnwrapKey,
+		}, keyUsages); err != nil {
+			return nil, err
+		}
+	} else {
+		// If the "d" field of jwk is not present and usages contains an entry which is not
+		// "encrypt" or "wrapKey", then throw a SyntaxError.
+		if err := util.AreUsagesValid([]webcrypto.KeyUsage{
+			webcrypto.Encrypt, webcrypto.WrapKey,
+		}, keyUsages); err != nil {
+			return nil, err
+		}
+	}
+
+	// If the "kty" field of jwk is not a case-sensitive string match
+	// to "RSA", then throw a DataError.
+	if keyData.Kty != "RSA" {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "invalid kty")
+	}
+
+	// If usages is non-empty and the "use" field of jwk is present and is
+	// not a case-sensitive string match to "enc", then throw a DataError.
+	if len(keyUsages) > 0 {
+		if keyData.Use != "enc" {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "invalid use")
+		}
+	}
+
+	// If the "key_ops" field of jwk is present, and is invalid according to the requirements
+	// of JSON Web Key or does not contain all of the specified usages values, then throw
+	// a DataError.
+	if len(keyData.KeyOps) > 0 {
+		if err := util.AreUsagesValid(keyUsages, keyData.KeyOps); err != nil {
+			return nil, err
+		}
+	}
+
+	// If the "ext" field of jwk is present and has the value false and extractable is true,
+	// then throw a DataError.
+	if keyData.Ext != extractable {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "invalid ext")
+	}
+
+	hash := ""
+	if keyData.Alg != "" {
+		switch keyData.Alg {
+		case "RSA-OAEP":
+			hash = "SHA-1"
+		case "RSA-OAEP-256":
+			hash = "SHA-256"
+		case "RSA-OAEP-384":
+			hash = "SHA-384"
+		case "RSA-OAEP-512":
+			hash = "SHA-512"
+		default:
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "invalid alg")
+		}
+	}
+
+	// TODO normalize algorithm
+	// extract the public key attributes
+	ck := &CryptoKey{
+		isPrivate: false,
+		ext:       extractable,
+		alg: &KeyAlgorithm{
+			Name: "RSA-OAEP",
+			HashedKeyAlgorithm: &HashedKeyAlgorithm{
+				Hash: hash,
+			},
+		},
+		usages: keyUsages,
+	}
+
+	pub := rsa.PublicKey{}
+	n, err := encoding.DecodeString(keyData.N)
+	if err != nil {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, fmt.Sprintf("invalid n: %s", err.Error()))
+	}
+	pub.N = big.NewInt(0).SetBytes(n)
+
+	e, err := encoding.DecodeString(keyData.E)
+	if err != nil {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, fmt.Sprintf("invalid e: %s", err.Error()))
+	}
+	pub.E = int(big.NewInt(0).SetBytes(e).Int64())
+	ck.alg.ModulusLength = uint64(pub.N.BitLen())
+	ck.alg.PublicExponent = *big.NewInt(int64(pub.E))
+	ck.pub = pub
+
+	// Extract private data if it exists
+	if keyData.D != "" {
+		ck.isPrivate = true
+		priv := rsa.PrivateKey{
+			PublicKey: pub,
+		}
+		d, err := encoding.DecodeString(keyData.D)
+		if err != nil {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, fmt.Sprintf("invalid d: %s", err.Error()))
+		}
+		priv.D = big.NewInt(0).SetBytes(d)
+		// Lets precompute dp, dq, qi and check that the data in the jwk is correct
+		priv.Precompute()
+
+		dp, err := encoding.DecodeString(keyData.Dp)
+		if err != nil {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, fmt.Sprintf("invalid dp: %s", err.Error()))
+		}
+		if priv.Precomputed.Dp.Cmp(big.NewInt(0).SetBytes(dp)) != 0 {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "dp value does not match precomputed value")
+		}
+
+		dq, err := encoding.DecodeString(keyData.Dq)
+		if err != nil {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, fmt.Sprintf("invalid dq: %s", err.Error()))
+		}
+		if priv.Precomputed.Dq.Cmp(big.NewInt(0).SetBytes(dq)) != 0 {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "dq value does not match precomputed value")
+		}
+
+		qi, err := encoding.DecodeString(keyData.Qi)
+		if err != nil {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, fmt.Sprintf("invalid qi: %s", err.Error()))
+		}
+		if priv.Precomputed.Qinv.Cmp(big.NewInt(0).SetBytes(qi)) != 0 {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "qi value does not match precomputed value")
+		}
+
+		ck.priv = &priv
+	}
+	return ck, nil
 }
 
 func (a *SubtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) ([]byte, error) {
