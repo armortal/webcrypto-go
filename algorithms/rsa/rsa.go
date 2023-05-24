@@ -201,6 +201,7 @@ func (a *SubtleCrypto) exportKeyJwk(key *CryptoKey) (*webcrypto.JsonWebKey, erro
 		Kty:    "RSA",
 		Ext:    key.ext,
 		KeyOps: key.usages,
+		Use:    "enc",
 	}
 
 	switch key.alg.Name {
@@ -489,6 +490,20 @@ func (a *SubtleCrypto) importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *Al
 			return nil, webcrypto.NewError(webcrypto.ErrDataError, fmt.Sprintf("invalid d: %s", err.Error()))
 		}
 		priv.D = big.NewInt(0).SetBytes(d)
+
+		priv.Primes = make([]*big.Int, 2)
+		p, err := encoding.DecodeString(keyData.P)
+		if err != nil {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, fmt.Sprintf("invalid p: %s", err.Error()))
+		}
+		priv.Primes[0] = big.NewInt(0).SetBytes(p)
+
+		q, err := encoding.DecodeString(keyData.Q)
+		if err != nil {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, fmt.Sprintf("invalid q: %s", err.Error()))
+		}
+		priv.Primes[1] = big.NewInt(0).SetBytes(q)
+
 		// Lets precompute dp, dq, qi and check that the data in the jwk is correct
 		priv.Precompute()
 
