@@ -10,7 +10,7 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
-// limitations under the License.package rsa
+// limitations under the License
 
 package rsa
 
@@ -225,4 +225,51 @@ func TestOaep_GenerateKey(t *testing.T) {
 		}
 	})
 
+}
+
+func TestOaep_ImportKey(t *testing.T) {
+	subtle := &SubtleCrypto{}
+	key, err := subtle.GenerateKey(&Algorithm{
+		Name: "RSA-OAEP",
+		HashedKeyGenParams: &HashedKeyGenParams{
+			KeyGenParams: KeyGenParams{
+				ModulusLength:  2048,
+				PublicExponent: *big.NewInt(65537),
+			},
+			Hash: "SHA-256",
+		},
+	}, true, webcrypto.Decrypt, webcrypto.Encrypt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := subtle.ExportKey(webcrypto.Jwk, key.(webcrypto.CryptoKeyPair).PrivateKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("import jwk", func(t *testing.T) {
+		in, err := subtle.ImportKey(webcrypto.Jwk, data, &Algorithm{
+			Name: "RSA-OAEP",
+			HashedImportParams: &HashedImportParams{
+				Hash: "SHA-256",
+			},
+		}, true, webcrypto.Decrypt)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if in.Algorithm().GetName() != "RSA-OAEP" {
+			t.Fatal()
+		}
+
+		if in.Extractable() != true {
+			t.Fatal()
+		}
+
+		if in.Type() != webcrypto.Private {
+			t.Fatal()
+		}
+
+	})
 }

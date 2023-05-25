@@ -84,7 +84,7 @@ func (c *CryptoKey) Extractable() bool {
 	return c.extractable
 }
 
-func (c *CryptoKey) Algorithm() webcrypto.Algorithm {
+func (c *CryptoKey) Algorithm() webcrypto.KeyAlgorithm {
 	return c.algorithm
 }
 
