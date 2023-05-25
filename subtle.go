@@ -14,8 +14,6 @@
 
 package webcrypto
 
-import "io"
-
 // SubtleCrypto interface provides a set of methods for dealing with low-level cryptographic primitives and
 // algorithms.
 // See §14. (https://w3c.github.io/webcrypto/#subtlecrypto-interface)
@@ -23,7 +21,7 @@ type SubtleCrypto interface {
 
 	// Decrypt will decrypt data using the specified Algorithm with the supplied CryptoKey.
 	// See §14.2.2 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-decrypt)
-	Decrypt(algorithm Algorithm, key CryptoKey, data io.Reader) (any, error)
+	Decrypt(algorithm Algorithm, key CryptoKey, data []byte) ([]byte, error)
 
 	// DeriveBits can be used to derive an array of bits from a base key.
 	// See  §14.2.8 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-deriveBits)
@@ -37,11 +35,11 @@ type SubtleCrypto interface {
 	// derived from some variable-length input. Cryptographic digests should exhibit collision-resistance,
 	// meaning that it's hard to come up with two different inputs that have the same digest value.
 	// See  §14.2.5 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-digest)
-	Digest(algorithm Algorithm, data io.Reader) ([]byte, error)
+	Digest(algorithm Algorithm, data []byte) ([]byte, error)
 
 	// Encrypt will encrypt data using the specified AlgorithmIdentifier with the supplied CryptoKey.
 	// See §14.2.1 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-encrypt)
-	Encrypt(algorithm Algorithm, key CryptoKey, data io.Reader) (any, error)
+	Encrypt(algorithm Algorithm, key CryptoKey, data []byte) ([]byte, error)
 
 	// ExportKey exports a key: that is, it takes as input a CryptoKey object and gives you the key
 	// in an external, portable format.
@@ -59,7 +57,7 @@ type SubtleCrypto interface {
 
 	// Sign generates a digital signature.
 	// See §14.2.3 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-sign)
-	Sign(algorithm Algorithm, key CryptoKey, data io.Reader) ([]byte, error)
+	Sign(algorithm Algorithm, key CryptoKey, data []byte) ([]byte, error)
 
 	// UnwrapKey "unwraps" a key. This means that it takes as its input a key that has been exported and
 	// then encrypted (also called "wrapped"). It decrypts the key and then imports it, returning a CryptoKey
@@ -75,7 +73,7 @@ type SubtleCrypto interface {
 
 	// Verify verifies a digital signature.
 	// See §14.2.4 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-verify)
-	Verify(algorithm Algorithm, key CryptoKey, signature []byte, data io.Reader) (bool, error)
+	Verify(algorithm Algorithm, key CryptoKey, signature []byte, data []byte) (bool, error)
 
 	// WrapKey "wraps" a key. This means that it exports the key in an external, portable format, then encrypts
 	// the exported key. Wrapping a key helps protect it in untrusted environments, such as inside an otherwise
@@ -91,7 +89,7 @@ func Subtle() SubtleCrypto {
 	return &subtleCrypto{}
 }
 
-func (s *subtleCrypto) Decrypt(algorithm Algorithm, key CryptoKey, data io.Reader) (any, error) {
+func (s *subtleCrypto) Decrypt(algorithm Algorithm, key CryptoKey, data []byte) ([]byte, error) {
 	subtle, err := getSubtleCrypto(algorithm)
 	if err != nil {
 		return nil, err
@@ -115,7 +113,7 @@ func (s *subtleCrypto) DeriveKey(algorithm Algorithm, baseKey CryptoKey, derived
 	return subtle().DeriveKey(algorithm, baseKey, derivedKeyType, extractable, keyUsages...)
 }
 
-func (s *subtleCrypto) Digest(algorithm Algorithm, data io.Reader) ([]byte, error) {
+func (s *subtleCrypto) Digest(algorithm Algorithm, data []byte) ([]byte, error) {
 	subtle, err := getSubtleCrypto(algorithm)
 	if err != nil {
 		return nil, err
@@ -123,7 +121,7 @@ func (s *subtleCrypto) Digest(algorithm Algorithm, data io.Reader) ([]byte, erro
 	return subtle().Digest(algorithm, data)
 }
 
-func (s *subtleCrypto) Encrypt(algorithm Algorithm, key CryptoKey, data io.Reader) (any, error) {
+func (s *subtleCrypto) Encrypt(algorithm Algorithm, key CryptoKey, data []byte) ([]byte, error) {
 	subtle, err := getSubtleCrypto(algorithm)
 	if err != nil {
 		return nil, err
@@ -156,7 +154,7 @@ func (s *subtleCrypto) ImportKey(format KeyFormat, keyData any, algorithm Algori
 	return subtle().ImportKey(format, keyData, algorithm, extractable, keyUsages...)
 }
 
-func (s *subtleCrypto) Sign(algorithm Algorithm, key CryptoKey, data io.Reader) ([]byte, error) {
+func (s *subtleCrypto) Sign(algorithm Algorithm, key CryptoKey, data []byte) ([]byte, error) {
 	subtle, err := getSubtleCrypto(algorithm)
 	if err != nil {
 		return nil, err
@@ -178,7 +176,7 @@ func (s *subtleCrypto) UnwrapKey(format KeyFormat,
 	return subtle().UnwrapKey(format, wrappedKey, unwrappingKey, unwrapAlgorithm, unwrappedKeyAlgorithm, extractable, keyUsages...)
 }
 
-func (s *subtleCrypto) Verify(algorithm Algorithm, key CryptoKey, signature []byte, data io.Reader) (bool, error) {
+func (s *subtleCrypto) Verify(algorithm Algorithm, key CryptoKey, signature []byte, data []byte) (bool, error) {
 	subtle, err := getSubtleCrypto(algorithm)
 	if err != nil {
 		return false, err

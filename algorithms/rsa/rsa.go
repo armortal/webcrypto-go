@@ -26,7 +26,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"hash"
-	"io"
 	"math/big"
 
 	"github.com/armortal/webcrypto-go"
@@ -152,7 +151,7 @@ func (c *CryptoKey) Usages() []webcrypto.KeyUsage {
 	return c.usages
 }
 
-func (a *SubtleCrypto) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
+func (a *SubtleCrypto) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
 	alg, err := getAlgorithm(algorithm)
 	if err != nil {
 		return nil, err
@@ -174,18 +173,12 @@ func (a *SubtleCrypto) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.Cryp
 	if err != nil {
 		return nil, err
 	}
-
-	ciphertext, err := io.ReadAll(data)
-	if err != nil {
-		return nil, webcrypto.NewError(webcrypto.ErrOperationError, err.Error())
-	}
-
 	label := make([]byte, 0)
 	if alg.OaepParams != nil {
 		label = alg.OaepParams.Label
 	}
 
-	msg, err := rsa.DecryptOAEP(hash, rand.Reader, k.priv, ciphertext, label)
+	msg, err := rsa.DecryptOAEP(hash, rand.Reader, k.priv, data, label)
 	if err != nil {
 		return nil, webcrypto.NewError(webcrypto.ErrOperationError, err.Error())
 	}
@@ -201,11 +194,11 @@ func (a *SubtleCrypto) DeriveKey(algorithm webcrypto.Algorithm, baseKey webcrypt
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) Digest(algorithm webcrypto.Algorithm, data io.Reader) ([]byte, error) {
+func (a *SubtleCrypto) Digest(algorithm webcrypto.Algorithm, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
+func (a *SubtleCrypto) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
 	alg, err := getAlgorithm(algorithm)
 	if err != nil {
 		return nil, err
@@ -228,17 +221,12 @@ func (a *SubtleCrypto) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.Cryp
 		return nil, err
 	}
 
-	msg, err := io.ReadAll(data)
-	if err != nil {
-		return nil, webcrypto.NewError(webcrypto.ErrOperationError, err.Error())
-	}
-
 	label := make([]byte, 0)
 	if alg.OaepParams != nil {
 		label = alg.OaepParams.Label
 	}
 
-	b, err := rsa.EncryptOAEP(hash, rand.Reader, k.pub, msg, label)
+	b, err := rsa.EncryptOAEP(hash, rand.Reader, k.pub, data, label)
 	if err != nil {
 		return nil, webcrypto.NewError(webcrypto.ErrOperationError, err.Error())
 	}
@@ -613,7 +601,7 @@ func (a *SubtleCrypto) importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *Al
 	return ck, nil
 }
 
-func (a *SubtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) ([]byte, error) {
+func (a *SubtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
@@ -627,7 +615,7 @@ func (a *SubtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data io.Reader) (bool, error) {
+func (a *SubtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
 	return false, webcrypto.ErrMethodNotSupported()
 }
 

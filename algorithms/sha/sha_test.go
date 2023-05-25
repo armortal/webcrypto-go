@@ -15,7 +15,6 @@
 package sha
 
 import (
-	"bytes"
 	"fmt"
 	"testing"
 )
@@ -62,7 +61,7 @@ func TestSHA512(t *testing.T) {
 }
 
 func digestMismatch(t *testing.T, input string, subtle *subtleCrypto, output string) {
-	act, err := subtle.Digest(&Algorithm{Name: subtle.name}, bytes.NewReader([]byte(input)))
+	act, err := subtle.Digest(&Algorithm{Name: subtle.name}, []byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +71,7 @@ func digestMismatch(t *testing.T, input string, subtle *subtleCrypto, output str
 }
 
 func digest(t *testing.T, input string, subtle *subtleCrypto, exp string) {
-	act, err := subtle.Digest(&Algorithm{Name: subtle.name}, bytes.NewReader([]byte(input)))
+	act, err := subtle.Digest(&Algorithm{Name: subtle.name}, []byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -44,18 +44,18 @@ func TestEncryptDecrypt(t *testing.T) {
 	msg := []byte("helloworld")
 	b, err := subtle.Encrypt(&Algorithm{
 		Name: "RSA-OAEP",
-	}, key.(*CryptoKeyPair).PublicKey(), bytes.NewReader(msg))
+	}, key.(*CryptoKeyPair).PublicKey(), msg)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	v, err := subtle.Decrypt(&Algorithm{
 		Name: "RSA-OAEP",
-	}, key.(*CryptoKeyPair).PrivateKey(), bytes.NewReader(b.([]byte)))
+	}, key.(*CryptoKeyPair).PrivateKey(), b)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(msg, v.([]byte)) {
+	if !bytes.Equal(msg, v) {
 		t.Fatal("msg mismatch")
 	}
 }

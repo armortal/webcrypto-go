@@ -21,7 +21,6 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"hash"
-	"io"
 
 	"github.com/armortal/webcrypto-go"
 )
@@ -52,7 +51,7 @@ type subtleCrypto struct {
 	name string
 }
 
-func (a *subtleCrypto) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
+func (a *subtleCrypto) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
@@ -64,7 +63,7 @@ func (a *subtleCrypto) DeriveKey(algorithm webcrypto.Algorithm, baseKey webcrypt
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *subtleCrypto) Digest(algorithm webcrypto.Algorithm, data io.Reader) ([]byte, error) {
+func (a *subtleCrypto) Digest(algorithm webcrypto.Algorithm, data []byte) ([]byte, error) {
 	alg, ok := algorithm.(*Algorithm)
 	if !ok {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm is not *sha.Algorithm")
@@ -82,16 +81,11 @@ func (a *subtleCrypto) Digest(algorithm webcrypto.Algorithm, data io.Reader) ([]
 	default:
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "algorithm name is not a valid SHA algorithm")
 	}
-	// TODO should read x bytes at a time
-	b, err := io.ReadAll(data)
-	if err != nil {
-		return nil, err
-	}
-	hash.Write(b)
+	hash.Write(data)
 	return hash.Sum(nil), nil
 }
 
-func (a *subtleCrypto) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
+func (a *subtleCrypto) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
@@ -107,7 +101,7 @@ func (a *subtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algori
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *subtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) ([]byte, error) {
+func (a *subtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
@@ -121,7 +115,7 @@ func (a *subtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *subtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data io.Reader) (bool, error) {
+func (a *subtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
 	return false, webcrypto.ErrMethodNotSupported()
 }
 
