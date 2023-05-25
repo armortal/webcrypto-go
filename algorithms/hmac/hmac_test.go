@@ -146,7 +146,7 @@ func TestSign(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sig, err := subtle.Sign(&Algorithm{}, key, bytes.NewReader([]byte(input)))
+	sig, err := subtle.Sign(&Algorithm{}, key, []byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ok, err := subtle.Verify(&Algorithm{}, key, sig, bytes.NewReader([]byte(input)))
+	ok, err := subtle.Verify(&Algorithm{}, key, sig, []byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}

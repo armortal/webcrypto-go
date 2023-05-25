@@ -15,6 +15,7 @@
 package rsa
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
@@ -23,6 +24,41 @@ import (
 
 	"github.com/armortal/webcrypto-go"
 )
+
+func TestEncryptDecrypt(t *testing.T) {
+	subtle := &SubtleCrypto{}
+	key, err := subtle.GenerateKey(&Algorithm{
+		Name: "RSA-OAEP",
+		HashedKeyGenParams: &HashedKeyGenParams{
+			KeyGenParams: KeyGenParams{
+				ModulusLength:  2048,
+				PublicExponent: *big.NewInt(65537),
+			},
+			Hash: "SHA-256",
+		},
+	}, true, webcrypto.Decrypt, webcrypto.Encrypt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	msg := []byte("helloworld")
+	b, err := subtle.Encrypt(&Algorithm{
+		Name: "RSA-OAEP",
+	}, key.(*CryptoKeyPair).PublicKey(), msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	v, err := subtle.Decrypt(&Algorithm{
+		Name: "RSA-OAEP",
+	}, key.(*CryptoKeyPair).PrivateKey(), b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(msg, v) {
+		t.Fatal("msg mismatch")
+	}
+}
 
 func TestOaep_ExportKey(t *testing.T) {
 	subtle := &SubtleCrypto{}

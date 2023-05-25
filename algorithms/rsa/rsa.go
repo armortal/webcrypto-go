@@ -19,11 +19,13 @@ package rsa
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 	"encoding/base64"
-	"errors"
 	"fmt"
-	"io"
+	"hash"
 	"math/big"
 
 	"github.com/armortal/webcrypto-go"
@@ -123,7 +125,7 @@ func (c *CryptoKeyPair) PrivateKey() webcrypto.CryptoKey {
 
 type CryptoKey struct {
 	isPrivate bool
-	pub       rsa.PublicKey
+	pub       *rsa.PublicKey
 	priv      *rsa.PrivateKey
 	alg       *KeyAlgorithm
 	ext       bool
@@ -149,8 +151,39 @@ func (c *CryptoKey) Usages() []webcrypto.KeyUsage {
 	return c.usages
 }
 
-func (a *SubtleCrypto) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
-	return nil, errors.New("unimplemented")
+func (a *SubtleCrypto) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
+	alg, err := getAlgorithm(algorithm)
+	if err != nil {
+		return nil, err
+	}
+	if alg.Name != rsaOaep {
+		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "encrypt not supported")
+	}
+
+	k, ok := key.(*CryptoKey)
+	if !ok {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "key must be *rsa.CryptoKey")
+	}
+
+	if !k.isPrivate {
+		return nil, webcrypto.NewError(webcrypto.ErrInvalidAccessError, "key must be private")
+	}
+
+	hash, err := getHash(k.alg.Hash)
+	if err != nil {
+		return nil, err
+	}
+	label := make([]byte, 0)
+	if alg.OaepParams != nil {
+		label = alg.OaepParams.Label
+	}
+
+	msg, err := rsa.DecryptOAEP(hash, rand.Reader, k.priv, data, label)
+	if err != nil {
+		return nil, webcrypto.NewError(webcrypto.ErrOperationError, err.Error())
+	}
+
+	return msg, nil
 }
 
 func (a *SubtleCrypto) DeriveBits(algorithm webcrypto.Algorithm, baseKey webcrypto.CryptoKey, length uint64) ([]byte, error) {
@@ -161,12 +194,44 @@ func (a *SubtleCrypto) DeriveKey(algorithm webcrypto.Algorithm, baseKey webcrypt
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) Digest(algorithm webcrypto.Algorithm, data io.Reader) ([]byte, error) {
+func (a *SubtleCrypto) Digest(algorithm webcrypto.Algorithm, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
-	return nil, errors.New("unimplemented")
+func (a *SubtleCrypto) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
+	alg, err := getAlgorithm(algorithm)
+	if err != nil {
+		return nil, err
+	}
+	if alg.Name != rsaOaep {
+		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "encrypt not supported")
+	}
+
+	k, ok := key.(*CryptoKey)
+	if !ok {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "key must be *rsa.CryptoKey")
+	}
+
+	if k.isPrivate {
+		return nil, webcrypto.NewError(webcrypto.ErrInvalidAccessError, "key must be public")
+	}
+
+	hash, err := getHash(k.alg.Hash)
+	if err != nil {
+		return nil, err
+	}
+
+	label := make([]byte, 0)
+	if alg.OaepParams != nil {
+		label = alg.OaepParams.Label
+	}
+
+	b, err := rsa.EncryptOAEP(hash, rand.Reader, k.pub, data, label)
+	if err != nil {
+		return nil, webcrypto.NewError(webcrypto.ErrOperationError, err.Error())
+	}
+
+	return b, nil
 }
 
 func (a *SubtleCrypto) ExportKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey) (any, error) {
@@ -292,7 +357,7 @@ func (a *SubtleCrypto) generateKeyOaep(algorithm *HashedKeyGenParams, extractabl
 
 	// Create the CryptoKey object for the public key
 	pub := &CryptoKey{
-		pub:    key.PublicKey,
+		pub:    &key.PublicKey,
 		alg:    alg,
 		ext:    true,
 		usages: util.UsageIntersection([]webcrypto.KeyUsage{webcrypto.Encrypt, webcrypto.WrapKey}, keyUsages),
@@ -477,7 +542,7 @@ func (a *SubtleCrypto) importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *Al
 	pub.E = int(big.NewInt(0).SetBytes(e).Int64())
 	ck.alg.ModulusLength = uint64(pub.N.BitLen())
 	ck.alg.PublicExponent = *big.NewInt(int64(pub.E))
-	ck.pub = pub
+	ck.pub = &pub
 
 	// Extract private data if it exists
 	if keyData.D != "" {
@@ -536,7 +601,7 @@ func (a *SubtleCrypto) importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *Al
 	return ck, nil
 }
 
-func (a *SubtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) ([]byte, error) {
+func (a *SubtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
@@ -550,10 +615,33 @@ func (a *SubtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data io.Reader) (bool, error) {
+func (a *SubtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
 	return false, webcrypto.ErrMethodNotSupported()
 }
 
 func (a *SubtleCrypto) WrapKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey, wrappingKey webcrypto.CryptoKey, wrapAlgorithm webcrypto.Algorithm) (any, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
+}
+
+func getAlgorithm(algorithm webcrypto.Algorithm) (*Algorithm, error) {
+	alg, ok := algorithm.(*Algorithm)
+	if !ok {
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm must be *rsa.Algorithm")
+	}
+	return alg, nil
+}
+
+func getHash(hash string) (hash.Hash, error) {
+	switch hash {
+	case "SHA-1":
+		return sha1.New(), nil
+	case "SHA-256":
+		return sha256.New(), nil
+	case "SHA-384":
+		return sha512.New384(), nil
+	case "SHA-512":
+		return sha512.New(), nil
+	default:
+		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, fmt.Sprintf("hash %s not supported", hash))
+	}
 }

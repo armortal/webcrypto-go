@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"hash"
-	"io"
 
 	"github.com/armortal/webcrypto-go"
 	"github.com/armortal/webcrypto-go/util"
@@ -32,6 +31,10 @@ import (
 var usages = []webcrypto.KeyUsage{
 	webcrypto.Sign,
 	webcrypto.Verify,
+}
+
+func init() {
+	webcrypto.RegisterAlgorithm("HMAC", func() webcrypto.SubtleCrypto { return &SubtleCrypto{} })
 }
 
 type SubtleCrypto struct {
@@ -96,7 +99,7 @@ func (a *SubtleCrypto) Name() string {
 	return "HMAC"
 }
 
-func (a *SubtleCrypto) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
+func (a *SubtleCrypto) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
@@ -108,11 +111,11 @@ func (a *SubtleCrypto) DeriveKey(algorithm webcrypto.Algorithm, baseKey webcrypt
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) Digest(algorithm webcrypto.Algorithm, data io.Reader) ([]byte, error) {
+func (a *SubtleCrypto) Digest(algorithm webcrypto.Algorithm, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) (any, error) {
+func (a *SubtleCrypto) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
@@ -345,7 +348,7 @@ func importKeyFromRaw(keyData []byte, algorithm *Algorithm, extractable bool, ke
 	}, nil
 }
 
-func (a *SubtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data io.Reader) ([]byte, error) {
+func (a *SubtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
 	if _, ok := algorithm.(*Algorithm); !ok {
 		return nil, errors.New("webcrypto: algorithm must be *hmac.Algorithm")
 	}
@@ -370,11 +373,7 @@ func (a *SubtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoK
 	}
 
 	h := hmac.New(hash, k.secret)
-	b, err := io.ReadAll(data)
-	if err != nil {
-		return nil, err
-	}
-	h.Write(b)
+	h.Write(data)
 	return h.Sum(nil), nil
 }
 
@@ -388,7 +387,7 @@ func (a *SubtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data io.Reader) (bool, error) {
+func (a *SubtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
 	act, err := a.Sign(algorithm, key, data)
 	if err != nil {
 		return false, err
