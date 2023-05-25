@@ -45,7 +45,7 @@ type CryptoKey interface {
 	Extractable() bool
 
 	// An object describing the algorithm for which this key can be used and any associated extra parameters.
-	Algorithm() Algorithm
+	Algorithm() KeyAlgorithm
 
 	// An Array of strings, indicating what can be done with the key. Possible values for array
 	// elements are "encrypt", "decrypt", "sign", "verify", "deriveKey", "deriveBits", "wrapKey",

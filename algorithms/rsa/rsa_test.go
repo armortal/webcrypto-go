@@ -249,7 +249,7 @@ func TestOaep_ImportKey(t *testing.T) {
 	}
 
 	t.Run("import jwk", func(t *testing.T) {
-		_, err := subtle.ImportKey(webcrypto.Jwk, data, &Algorithm{
+		in, err := subtle.ImportKey(webcrypto.Jwk, data, &Algorithm{
 			Name: "RSA-OAEP",
 			HashedImportParams: &HashedImportParams{
 				Hash: "SHA-256",
@@ -257,6 +257,18 @@ func TestOaep_ImportKey(t *testing.T) {
 		}, true, webcrypto.Decrypt)
 		if err != nil {
 			t.Fatal(err)
+		}
+
+		if in.Algorithm().GetName() != "RSA-OAEP" {
+			t.Fatal()
+		}
+
+		if in.Extractable() != true {
+			t.Fatal()
+		}
+
+		if in.Type() != webcrypto.Private {
+			t.Fatal()
 		}
 
 	})

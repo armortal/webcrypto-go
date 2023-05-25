@@ -141,8 +141,8 @@ func (c *CryptoKey) Extractable() bool {
 	return c.ext
 }
 
-func (c *CryptoKey) Algorithm() webcrypto.Algorithm {
-	return nil
+func (c *CryptoKey) Algorithm() webcrypto.KeyAlgorithm {
+	return c.alg
 }
 
 func (c *CryptoKey) Usages() []webcrypto.KeyUsage {
