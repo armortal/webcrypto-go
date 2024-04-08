@@ -1,4 +1,4 @@
-// Copyright 2023 ARMORTAL TECHNOLOGIES PTY LTD
+// Copyright 2023-2024 ARMORTAL TECHNOLOGIES PTY LTD
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,6 +57,37 @@ type CryptoKey interface {
 // and private (PrivateKey) keys.
 // See §17. (https://w3c.github.io/webcrypto/#keypair)
 type CryptoKeyPair interface {
-	PrivateKey() CryptoKey
 	PublicKey() CryptoKey
+	PrivateKey() CryptoKey
+}
+
+// NewCryptoKeyPair creates a new key pair from the public and private keys.
+// This function shouldn't be called from your application. It is called from the
+// implementing algorithms when returning key pairs from the GenerateKey function.
+// Use Subtle().GenerateKey() to get your key pairs.
+func NewCryptoKeyPair(public CryptoKey, private CryptoKey) CryptoKeyPair {
+	if public == nil || private == nil {
+		panic("webcrypto: both public and private keys are required")
+	}
+	return &cryptoKeyPair{
+		pub:  public,
+		priv: private,
+	}
+}
+
+// cryptoKeyPair implements CryptoKeyPair. It can be created with NewCryptoKeyPair()
+// for algorithms that don't need custom implementations.
+type cryptoKeyPair struct {
+	pub  CryptoKey
+	priv CryptoKey
+}
+
+// PrivateKey returns the key pair's private key.
+func (p *cryptoKeyPair) PrivateKey() CryptoKey {
+	return p.priv
+}
+
+// PublicKey returns the key pair's public key.
+func (p *cryptoKeyPair) PublicKey() CryptoKey {
+	return p.pub
 }
