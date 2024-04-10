@@ -35,6 +35,7 @@ This library is still in active development and all algorithms are not yet suppo
 
 | Algorithm | encrypt | decrypt | sign | verify | digest | generateKey | deriveKey | deriveBits | importKey | exportKey | wrapKey | unwrapKey | 
 | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | 
+| [ECDSA](#ecdsa) |||:white_check_mark:|:white_check_mark:||:white_check_mark:|||:white_check_mark:|:white_check_mark:|||
 | [HMAC](#hmac) |||:white_check_mark:|:white_check_mark:||:white_check_mark:|||:white_check_mark:|:white_check_mark:|||
 | [RSA-OAEP](#rsa-oaep) |:white_check_mark:|:white_check_mark:||||:white_check_mark:|||:white_check_mark:|:white_check_mark:|||
 | [SHA](#sha) |||||:white_check_mark:||||||||
