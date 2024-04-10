@@ -2,12 +2,18 @@
 
 An implementation of the W3C Web Cryptography API specification (https://www.w3.org/TR/WebCryptoAPI/) for Go using Go's standard `crypto` library.
 
+> [!IMPORTANT]  
+> Whilst we try to ensure that we don't commit breaking changes until we release our first stable version, there
+> may be times where decisions made during early development no longer make sense and therefore require
+> breaking changes. Please be mindful of this when updating your version of this library until we hit v1.0.0.
+
 ## Contents
 
 - [Background](#background)
 - [Implementation status](#implementation-status)
 - [Getting started](#getting-started)
 - [Algorithms](#algorithms)
+	- [ECDSA](#ecdsa)
 	- [HMAC](#hmac)
 	- [RSA-OAEP](#rsa-oaep)
 	- [SHA](#sha)
@@ -38,6 +44,30 @@ This library is still in active development and all algorithms are not yet suppo
 `go get github.com/armortal/webcrypto-go`
 
 ## Algorithms
+
+### ECDSA
+
+The **ECDSA** algorithm is the implementation of operations described in [§23](https://www.w3.org/TR/WebCryptoAPI/#ecdsa) of the W3C specification.
+
+```go
+package main
+
+import (
+	"github.com/armortal/webcrypto-go"
+	"github.com/armortal/webcrypto-go/algorithms/ecdsa"
+)
+
+func main() {
+	// generate a new ECDSA key
+	key, err := webcrypto.Subtle().GenerateKey(
+		&ecdsa.Algorithm{
+			NamedCurve: "P-256"
+		}, true, webcrypto.Sign, webcrypto.Verify)
+	if err != nil {
+		panic(err)
+	}
+}
+```
 
 ### HMAC
 

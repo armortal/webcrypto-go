@@ -58,17 +58,15 @@ func Test_GenerateKey(t *testing.T) {
 	}
 
 	generateAndValidate := func(curve string, extractable bool, usages []webcrypto.KeyUsage) error {
-		k, err := new(SubtleCrypto).GenerateKey(&Algorithm{
-			KeyGenParams: &KeyGenParams{
-				NamedCurve: curve,
-			},
+		k, err := subtle.GenerateKey(&Algorithm{
+			NamedCurve: curve,
 		}, extractable, usages...)
 		if err != nil {
 			t.Error(err)
 		}
 		ckp := k.(webcrypto.CryptoKeyPair)
 
-		if err := validate(ckp.PublicKey(), webcrypto.Public, curve, extractable, []webcrypto.KeyUsage{webcrypto.Verify}); err != nil {
+		if err := validate(ckp.PublicKey(), webcrypto.Public, curve, true, []webcrypto.KeyUsage{webcrypto.Verify}); err != nil {
 			return err
 		}
 
@@ -88,7 +86,7 @@ func Test_GenerateKey(t *testing.T) {
 			t.Error(err)
 		}
 
-		if err := generateAndValidate(P256, true, []webcrypto.KeyUsage{webcrypto.Verify}); err != nil {
+		if err := generateAndValidate(P256, false, []webcrypto.KeyUsage{webcrypto.Verify}); err != nil {
 			t.Error(err)
 		}
 	})
@@ -100,7 +98,7 @@ func Test_GenerateKey(t *testing.T) {
 		if err := generateAndValidate(P384, true, []webcrypto.KeyUsage{webcrypto.Sign, webcrypto.Verify}); err != nil {
 			t.Error(err)
 		}
-		if err := generateAndValidate(P384, true, []webcrypto.KeyUsage{webcrypto.Verify}); err != nil {
+		if err := generateAndValidate(P384, false, []webcrypto.KeyUsage{webcrypto.Verify}); err != nil {
 			t.Error(err)
 		}
 	})
@@ -112,8 +110,62 @@ func Test_GenerateKey(t *testing.T) {
 		if err := generateAndValidate(P521, true, []webcrypto.KeyUsage{webcrypto.Sign, webcrypto.Verify}); err != nil {
 			t.Error(err)
 		}
-		if err := generateAndValidate(P521, true, []webcrypto.KeyUsage{webcrypto.Verify}); err != nil {
+		if err := generateAndValidate(P521, false, []webcrypto.KeyUsage{webcrypto.Verify}); err != nil {
 			t.Error(err)
 		}
 	})
+}
+
+func Test_SignAndVerify(t *testing.T) {
+	k, err := subtle.GenerateKey(&Algorithm{
+		NamedCurve: P256,
+	}, false, webcrypto.Sign)
+	if err != nil {
+		t.Error(err)
+	}
+	ckp := k.(webcrypto.CryptoKeyPair)
+
+	b, err := subtle.Sign(&Algorithm{
+		Hash: "SHA-256",
+	}, ckp.PrivateKey(), []byte("Hello, World!"))
+	if err != nil {
+		t.Error(err)
+	}
+
+	ok, err := subtle.Verify(&Algorithm{
+		Hash: "SHA-256",
+	}, ckp.PublicKey(), b, []byte("Hello, World!"))
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !ok {
+		t.FailNow()
+	}
+	fmt.Printf("%x", b)
+}
+
+func Test_ExportAndImportKey(t *testing.T) {
+	k, err := subtle.GenerateKey(&Algorithm{
+		NamedCurve: P256,
+	}, false, webcrypto.Sign)
+	if err != nil {
+		t.Error(err)
+	}
+
+	jwk, err := subtle.ExportKey(webcrypto.Jwk, k.(webcrypto.CryptoKeyPair).PrivateKey())
+	if err != nil {
+		t.Error(err)
+	}
+
+	// b, err := json.Marshal(jwk.(*webcrypto.JsonWebKey))
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+
+	_, err = subtle.ImportKey(webcrypto.Jwk, jwk, &Algorithm{NamedCurve: P256}, false, webcrypto.Sign)
+	if err != nil {
+		t.Error(err)
+	}
+
 }

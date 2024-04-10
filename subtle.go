@@ -31,7 +31,7 @@ type SubtleCrypto interface {
 	// See  §14.2.7 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-deriveKey)
 	DeriveKey(algorithm Algorithm, baseKey CryptoKey, derivedKeyType Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error)
 
-	// Digrest generates a digest of the given data. A digest is a short fixed-length value
+	// Digest generates a digest of the given data. A digest is a short fixed-length value
 	// derived from some variable-length input. Cryptographic digests should exhibit collision-resistance,
 	// meaning that it's hard to come up with two different inputs that have the same digest value.
 	// See  §14.2.5 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-digest)
