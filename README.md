@@ -62,10 +62,32 @@ func main() {
 	// generate a new ECDSA key
 	key, err := webcrypto.Subtle().GenerateKey(
 		&ecdsa.Algorithm{
-			NamedCurve: "P-256"
+			NamedCurve: "P-256",
 		}, true, webcrypto.Sign, webcrypto.Verify)
 	if err != nil {
 		panic(err)
+	}
+
+	ckp := key.(webcrypto.CryptoKeyPair)
+
+	// sign some data with the private key
+	sig, err := webcrypto.Subtle().Sign(&ecdsa.Algorithm{
+		Hash: "SHA-256",
+	}, ckp.PrivateKey(), []byte("test"))
+	if err != nil {
+		panic(err)
+	}
+
+	// verify the signature with the public key
+	ok, err := webcrypto.Subtle().Verify(&ecdsa.Algorithm{
+		Hash: "SHA-256",
+	}, ckp.PublicKey(), sig, []byte("test"))
+	if err != nil {
+		panic(err)
+	}
+
+	if !ok {
+		// didn't verify - do something
 	}
 }
 ```
@@ -85,6 +107,12 @@ import (
 func main() {
 	// Generate a new key. A *hmac.CryptoKey is returned which implements webcrypto.CryptoKey
 	key, err := webcrypto.Subtle().GenerateKey(
+		&Algorithm{
+			Name: "ECDSA",
+			Params: ecdsa.KeyGenParams{
+
+			}
+		}
 		&hmac.Algorithm{
 			KeyGenParams: &hmac.KeyGenParams{
 				Hash: "SHA-256",

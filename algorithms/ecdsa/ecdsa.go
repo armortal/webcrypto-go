@@ -17,7 +17,6 @@
 package ecdsa
 
 import (
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -74,8 +73,6 @@ func (c *CryptoKey) Usages() []webcrypto.KeyUsage {
 	return c.usages
 }
 
-// KeyGenParams represents the parameters available for key generation as specified at
-// §23.4 https://www.w3.org/TR/WebCryptoAPI/#dfn-EcKeyGenParams
 type Algorithm struct {
 	Hash       string
 	NamedCurve string
@@ -172,6 +169,9 @@ func (s *subtleCrypto) WrapKey(format webcrypto.KeyFormat, key webcrypto.CryptoK
 }
 
 func exportKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey) (any, error) {
+	if !key.Extractable() {
+		return nil, webcrypto.NewError(webcrypto.ErrInvalidAccessError, "key not extractable")
+	}
 	ckp, ok := key.(*CryptoKey)
 	if !ok {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "key must be *ecdsa.CryptoKey")
@@ -201,15 +201,15 @@ func exportKeyJwk(key *CryptoKey) (*webcrypto.JsonWebKey, error) {
 	jwk := &webcrypto.JsonWebKey{
 		Kty:    "EC",
 		Ext:    key.ext,
-		KeyOps: key.usages,
-		Use:    "sig",
 		Crv:    key.alg.namedCurve,
-		X:      util.Encoding().EncodeToString(key.pub.Y.Bytes()),
+		KeyOps: []webcrypto.KeyUsage{webcrypto.Verify},
+		X:      util.Encoding().EncodeToString(key.pub.X.Bytes()),
 		Y:      util.Encoding().EncodeToString(key.pub.Y.Bytes()),
 	}
 
 	if key.isPrivate {
 		jwk.D = util.Encoding().EncodeToString(key.priv.D.Bytes())
+		jwk.KeyOps = []webcrypto.KeyUsage{webcrypto.Sign}
 	}
 
 	return jwk, nil
@@ -361,14 +361,6 @@ func importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *Algorithm, extractab
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "invalid kty")
 	}
 
-	// If usages is non-empty and the "use" field of jwk is present and is
-	// not a case-sensitive string match to "sig", then throw a DataError.
-	if len(keyUsages) > 0 {
-		if keyData.Use != "sig" {
-			return nil, webcrypto.NewError(webcrypto.ErrDataError, "invalid use")
-		}
-	}
-
 	// the 'crv' in the jwk must match the named curve in the provided algorithm
 	if keyData.Crv != algorithm.NamedCurve {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "crv mismatch")
@@ -434,9 +426,13 @@ func importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *Algorithm, extractab
 	// If the "key_ops" field of jwk is present, and is invalid according to the requirements
 	// of JSON Web Key or does not contain all of the specified usages values, then throw
 	// a DataError.
-	if len(keyData.KeyOps) > 0 {
-		if err := util.AreUsagesValid(keyUsages, keyData.KeyOps); err != nil {
-			return nil, err
+	if ck.isPrivate {
+		if len(keyData.KeyOps) != 1 || keyData.KeyOps[0] != webcrypto.Sign {
+			return nil, webcrypto.NewError(webcrypto.ErrSyntaxError, "invalid key use")
+		}
+	} else {
+		if len(keyData.KeyOps) != 1 || keyData.KeyOps[0] != webcrypto.Verify {
+			return nil, webcrypto.NewError(webcrypto.ErrSyntaxError, "invalid key use")
 		}
 	}
 
@@ -450,6 +446,9 @@ func importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *Algorithm, extractab
 }
 
 func sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
+	if key.Type() != webcrypto.Private {
+		return nil, webcrypto.NewError(webcrypto.ErrInvalidAccessError, "key must be an *ecdsa.CryptoKey private key")
+	}
 	// ensure its the correct algorithm
 	alg, err := getAlgorithm(algorithm)
 	if err != nil {
@@ -478,15 +477,19 @@ func sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) (
 
 	digest := hash.Sum(nil)
 
-	b, err := pk.priv.Sign(rand.Reader, digest, crypto.SHA256)
+	// We concat both r and s - https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/sign#ecdsa
+	r, s, err := ecdsa.Sign(rand.Reader, pk.priv, digest)
 	if err != nil {
 		return nil, webcrypto.NewError(webcrypto.ErrOperationError, fmt.Sprintf("failed to sign: %s", err.Error()))
 	}
 
-	return b, nil
+	return append(r.Bytes(), s.Bytes()...), nil
 }
 
 func verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
+	if key.Type() != webcrypto.Public {
+		return false, webcrypto.NewError(webcrypto.ErrInvalidAccessError, "key must be an *ecdsa.CryptoKey public key")
+	}
 	// ensure its the correct algorithm
 	alg, err := getAlgorithm(algorithm)
 	if err != nil {
@@ -512,7 +515,9 @@ func verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []
 
 	digest := hash.Sum(nil)
 
-	return ecdsa.VerifyASN1(pk.pub, digest, signature), nil
+	r := signature[0:32]
+	s := signature[32:64]
+	return ecdsa.Verify(pk.pub, digest, big.NewInt(0).SetBytes(r), big.NewInt(0).SetBytes(s)), nil
 }
 
 func getAlgorithm(a webcrypto.Algorithm) (*Algorithm, error) {
