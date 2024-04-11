@@ -1,4 +1,4 @@
-// Copyright 2023 ARMORTAL TECHNOLOGIES PTY LTD
+// Copyright 2023-2024 ARMORTAL TECHNOLOGIES PTY LTD
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,25 @@
 // Package util contains utility functions.
 package util
 
-import "github.com/armortal/webcrypto-go"
+import (
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/base64"
+	"fmt"
+	"hash"
+
+	"github.com/armortal/webcrypto-go"
+)
+
+var (
+	encoding = base64.RawURLEncoding
+)
+
+// Encoding returns the common base64 encoding used.
+func Encoding() *base64.Encoding {
+	return encoding
+}
 
 // AreUsagesValid will check if the usages provided exist in the usages allowed.
 func AreUsagesValid(allowed []webcrypto.KeyUsage, actual []webcrypto.KeyUsage) error {
@@ -45,4 +63,21 @@ func UsageIntersection(v1 []webcrypto.KeyUsage, v2 []webcrypto.KeyUsage) []webcr
 		}
 	}
 	return i
+}
+
+// GetHash will return a new hasher or error if the hash is unknown.
+// Valid hash types are SHA-1, SHA-256, SHA-384 and SHA-512.
+func GetHash(hash string) (hash.Hash, error) {
+	switch hash {
+	case "SHA-1":
+		return sha1.New(), nil
+	case "SHA-256":
+		return sha256.New(), nil
+	case "SHA-384":
+		return sha512.New384(), nil
+	case "SHA-512":
+		return sha512.New(), nil
+	default:
+		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, fmt.Sprintf("unknown hash identifier '%s'", hash))
+	}
 }

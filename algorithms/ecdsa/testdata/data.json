@@ -1,0 +1,26 @@
+{
+  "publicKey": {
+    "key_ops": [
+      "verify"
+    ],
+    "ext": true,
+    "kty": "EC",
+    "x": "oL6OuNs-BvpgyGOLuRFQ2CCihVr07yuoYcGF49mu19Y",
+    "y": "Aq26n9ev0H_DgykNJ8iSljV5FDRmNA0Gz2HHW0LssSo",
+    "crv": "P-256"
+  },
+  "privateKey": {
+    "key_ops": [
+      "sign"
+    ],
+    "ext": true,
+    "kty": "EC",
+    "x": "oL6OuNs-BvpgyGOLuRFQ2CCihVr07yuoYcGF49mu19Y",
+    "y": "Aq26n9ev0H_DgykNJ8iSljV5FDRmNA0Gz2HHW0LssSo",
+    "crv": "P-256",
+    "d": "Hre-kVO62WIHIQuQj0sWQgK-dIWI-K5Kc2NiVVVaTRY"
+  },
+  "message": "test",
+  "hash": "SHA-256",
+  "signature": "a1GAhOpc4bpLYDxoFQ599F5r3q2cY90N3Vwc/T7EDkcRIiIV2KG6W2JYotXgQHK8Dchzx9OhJbbrno+EprdLuw=="
+}

@@ -14,6 +14,8 @@
 
 package webcrypto
 
+import "fmt"
+
 var algorithms = map[string]func() SubtleCrypto{}
 
 // Algorithm implements the Algorithm dictionary type as specified at
@@ -33,6 +35,10 @@ type KeyAlgorithm interface {
 // RegisterAlgorithm will register SubtleCrypto implementations referenced by the algorithm
 // name provided. When fn gets called, it should return a NEW instance of the implementation.
 func RegisterAlgorithm(name string, fn func() SubtleCrypto) {
+	_, ok := algorithms[name]
+	if ok {
+		panic(fmt.Sprintf("%s algorithm already registered", name))
+	}
 	algorithms[name] = fn
 }
 
