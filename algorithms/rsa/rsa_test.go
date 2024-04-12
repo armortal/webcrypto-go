@@ -26,10 +26,9 @@ import (
 )
 
 func TestEncryptDecrypt(t *testing.T) {
-	subtle := &SubtleCrypto{}
-	key, err := subtle.GenerateKey(&Algorithm{
+	key, err := subtle.GenerateKey(&webcrypto.Algorithm{
 		Name: "RSA-OAEP",
-		HashedKeyGenParams: &HashedKeyGenParams{
+		Params: &HashedKeyGenParams{
 			KeyGenParams: KeyGenParams{
 				ModulusLength:  2048,
 				PublicExponent: *big.NewInt(65537),
@@ -42,15 +41,17 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 
 	msg := []byte("helloworld")
-	b, err := subtle.Encrypt(&Algorithm{
-		Name: "RSA-OAEP",
+	b, err := subtle.Encrypt(&webcrypto.Algorithm{
+		Name:   "RSA-OAEP",
+		Params: &OaepParams{},
 	}, key.(*CryptoKeyPair).PublicKey(), msg)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	v, err := subtle.Decrypt(&Algorithm{
-		Name: "RSA-OAEP",
+	v, err := subtle.Decrypt(&webcrypto.Algorithm{
+		Name:   "RSA-OAEP",
+		Params: &OaepParams{},
 	}, key.(*CryptoKeyPair).PrivateKey(), b)
 	if err != nil {
 		t.Fatal(err)
@@ -61,10 +62,9 @@ func TestEncryptDecrypt(t *testing.T) {
 }
 
 func TestOaep_ExportKey(t *testing.T) {
-	subtle := &SubtleCrypto{}
-	key, err := subtle.GenerateKey(&Algorithm{
+	key, err := subtle.GenerateKey(&webcrypto.Algorithm{
 		Name: "RSA-OAEP",
-		HashedKeyGenParams: &HashedKeyGenParams{
+		Params: &HashedKeyGenParams{
 			KeyGenParams: KeyGenParams{
 				ModulusLength:  2048,
 				PublicExponent: *big.NewInt(65537),
@@ -156,12 +156,10 @@ func TestOaep_ExportKey(t *testing.T) {
 }
 
 func TestOaep_GenerateKey(t *testing.T) {
-	subtle := &SubtleCrypto{}
-
 	t.Run("generate successful key pair", func(t *testing.T) {
-		key, err := subtle.GenerateKey(&Algorithm{
+		key, err := subtle.GenerateKey(&webcrypto.Algorithm{
 			Name: "RSA-OAEP",
-			HashedKeyGenParams: &HashedKeyGenParams{
+			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
 					ModulusLength:  2048,
 					PublicExponent: *big.NewInt(65537),
@@ -214,9 +212,9 @@ func TestOaep_GenerateKey(t *testing.T) {
 	})
 
 	t.Run("invalid exponent", func(t *testing.T) {
-		_, err := subtle.GenerateKey(&Algorithm{
+		_, err := subtle.GenerateKey(&webcrypto.Algorithm{
 			Name: "RSA-OAEP",
-			HashedKeyGenParams: &HashedKeyGenParams{
+			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
 					ModulusLength:  2048,
 					PublicExponent: *big.NewInt(65536),
@@ -230,9 +228,9 @@ func TestOaep_GenerateKey(t *testing.T) {
 	})
 
 	t.Run("invalid usages", func(t *testing.T) {
-		_, err := subtle.GenerateKey(&Algorithm{
+		_, err := subtle.GenerateKey(&webcrypto.Algorithm{
 			Name: "RSA-OAEP",
-			HashedKeyGenParams: &HashedKeyGenParams{
+			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
 					ModulusLength:  2048,
 					PublicExponent: *big.NewInt(65537),
@@ -246,9 +244,9 @@ func TestOaep_GenerateKey(t *testing.T) {
 	})
 
 	t.Run("invalid algorithm name", func(t *testing.T) {
-		_, err := subtle.GenerateKey(&Algorithm{
+		_, err := subtle.GenerateKey(&webcrypto.Algorithm{
 			Name: "RSA-OAEP-invalid-name",
-			HashedKeyGenParams: &HashedKeyGenParams{
+			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
 					ModulusLength:  2048,
 					PublicExponent: *big.NewInt(65537),
@@ -264,10 +262,9 @@ func TestOaep_GenerateKey(t *testing.T) {
 }
 
 func TestOaep_ImportKey(t *testing.T) {
-	subtle := &SubtleCrypto{}
-	key, err := subtle.GenerateKey(&Algorithm{
+	key, err := subtle.GenerateKey(&webcrypto.Algorithm{
 		Name: "RSA-OAEP",
-		HashedKeyGenParams: &HashedKeyGenParams{
+		Params: &HashedKeyGenParams{
 			KeyGenParams: KeyGenParams{
 				ModulusLength:  2048,
 				PublicExponent: *big.NewInt(65537),
@@ -285,9 +282,9 @@ func TestOaep_ImportKey(t *testing.T) {
 	}
 
 	t.Run("import jwk", func(t *testing.T) {
-		in, err := subtle.ImportKey(webcrypto.Jwk, data, &Algorithm{
+		in, err := subtle.ImportKey(webcrypto.Jwk, data, &webcrypto.Algorithm{
 			Name: "RSA-OAEP",
-			HashedImportParams: &HashedImportParams{
+			Params: &HashedImportParams{
 				Hash: "SHA-256",
 			},
 		}, true, webcrypto.Decrypt)
@@ -295,7 +292,7 @@ func TestOaep_ImportKey(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if in.Algorithm().GetName() != "RSA-OAEP" {
+		if in.Algorithm().Name() != "RSA-OAEP" {
 			t.Fatal()
 		}
 

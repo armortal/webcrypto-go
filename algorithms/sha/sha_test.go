@@ -17,6 +17,8 @@ package sha
 import (
 	"fmt"
 	"testing"
+
+	"github.com/armortal/webcrypto-go"
 )
 
 func TestSHA1(t *testing.T) {
@@ -61,7 +63,7 @@ func TestSHA512(t *testing.T) {
 }
 
 func digestMismatch(t *testing.T, input string, subtle *subtleCrypto, output string) {
-	act, err := subtle.Digest(&Algorithm{Name: subtle.name}, []byte(input))
+	act, err := subtle.Digest(&webcrypto.Algorithm{Name: subtle.name}, []byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +73,7 @@ func digestMismatch(t *testing.T, input string, subtle *subtleCrypto, output str
 }
 
 func digest(t *testing.T, input string, subtle *subtleCrypto, exp string) {
-	act, err := subtle.Digest(&Algorithm{Name: subtle.name}, []byte(input))
+	act, err := subtle.Digest(&webcrypto.Algorithm{Name: subtle.name}, []byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}

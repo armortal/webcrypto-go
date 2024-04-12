@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.package rsa
 
-// Package ecdsa implements ECDSA operations as specified in the algorithms at
-// §23 https://www.w3.org/TR/WebCryptoAPI/#ecdsa
+// Package ecdsa implements ECDSA operations as described in the specifications at
+// §23 (https://www.w3.org/TR/WebCryptoAPI/#ecdsa).
 package ecdsa
 
 import (
@@ -61,8 +61,11 @@ func Test_GenerateKey(t *testing.T) {
 	}
 
 	generateAndValidate := func(curve string, extractable bool, usages []webcrypto.KeyUsage) error {
-		k, err := subtle.GenerateKey(&Algorithm{
-			NamedCurve: curve,
+		k, err := subtle.GenerateKey(&webcrypto.Algorithm{
+			Name: "ECDSA",
+			Params: &KeyGenParams{
+				NamedCurve: curve,
+			},
 		}, extractable, usages...)
 		if err != nil {
 			t.Error(err)
@@ -120,8 +123,11 @@ func Test_GenerateKey(t *testing.T) {
 }
 
 func Test_SignAndVerify(t *testing.T) {
-	k, err := subtle.GenerateKey(&Algorithm{
-		NamedCurve: P256,
+	k, err := subtle.GenerateKey(&webcrypto.Algorithm{
+		Name: "ECDSA",
+		Params: &KeyGenParams{
+			NamedCurve: P256,
+		},
 	}, false, webcrypto.Sign)
 	if err != nil {
 		t.Error(err)
@@ -135,15 +141,21 @@ func Test_SignAndVerify(t *testing.T) {
 }
 
 func signAndVerify(t *testing.T, priv webcrypto.CryptoKey, pub webcrypto.CryptoKey, hashFn string, data []byte) {
-	b, err := subtle.Sign(&Algorithm{
-		Hash: hashFn,
+	b, err := subtle.Sign(&webcrypto.Algorithm{
+		Name: "ECDSA",
+		Params: &Params{
+			Hash: hashFn,
+		},
 	}, priv, data)
 	if err != nil {
 		t.Error(err)
 	}
 
-	ok, err := subtle.Verify(&Algorithm{
-		Hash: hashFn,
+	ok, err := subtle.Verify(&webcrypto.Algorithm{
+		Name: "ECDSA",
+		Params: &Params{
+			Hash: hashFn,
+		},
 	}, pub, b, data)
 	if err != nil {
 		t.Error(err)
@@ -153,15 +165,21 @@ func signAndVerify(t *testing.T, priv webcrypto.CryptoKey, pub webcrypto.CryptoK
 	}
 
 	// test inputting and public into sign() and private key into verify()
-	_, err = subtle.Sign(&Algorithm{
-		Hash: hashFn,
+	_, err = subtle.Sign(&webcrypto.Algorithm{
+		Name: "ECDSA",
+		Params: &Params{
+			Hash: hashFn,
+		},
 	}, pub, data)
 	if err == nil {
 		t.Error("public key should not be allowed in sign()")
 	}
 
-	ok, err = subtle.Verify(&Algorithm{
-		Hash: hashFn,
+	ok, err = subtle.Verify(&webcrypto.Algorithm{
+		Name: "ECDSA",
+		Params: &Params{
+			Hash: hashFn,
+		},
 	}, priv, b, data)
 	if err == nil {
 		t.Error("private key should not be allowed in verify()")
@@ -192,7 +210,7 @@ func Test_testData(t *testing.T) {
 		t.Error(err)
 	}
 
-	k, err := subtle.ImportKey(webcrypto.Jwk, &jwk, &Algorithm{NamedCurve: P256}, true, webcrypto.Verify)
+	k, err := subtle.ImportKey(webcrypto.Jwk, &jwk, &webcrypto.Algorithm{Name: "ECDSA", Params: &KeyImportParams{NamedCurve: P256}}, true, webcrypto.Verify)
 	if err != nil {
 		t.Error(err)
 	}
@@ -202,8 +220,11 @@ func Test_testData(t *testing.T) {
 		t.Error(err)
 	}
 
-	ok, err := subtle.Verify(&Algorithm{
-		Hash: m["hash"].(string),
+	ok, err := subtle.Verify(&webcrypto.Algorithm{
+		Name: "ECDSA",
+		Params: &Params{
+			Hash: m["hash"].(string),
+		},
 	}, k, sig, []byte("test"))
 	if err != nil {
 		t.Error(err)
@@ -214,8 +235,11 @@ func Test_testData(t *testing.T) {
 }
 
 func Test_ExportAndImportJsonWebKey(t *testing.T) {
-	k, err := subtle.GenerateKey(&Algorithm{
-		NamedCurve: P256,
+	k, err := subtle.GenerateKey(&webcrypto.Algorithm{
+		Name: "ECDSA",
+		Params: &KeyGenParams{
+			NamedCurve: P256,
+		},
 	}, true, webcrypto.Sign)
 	if err != nil {
 		t.Error(err)
@@ -223,8 +247,11 @@ func Test_ExportAndImportJsonWebKey(t *testing.T) {
 
 	// lets sign a message that we'll verify after importing
 	data := []byte("Hello, world!")
-	sig, err := subtle.Sign(&Algorithm{
-		Hash: "SHA-256",
+	sig, err := subtle.Sign(&webcrypto.Algorithm{
+		Name: "ECDSA",
+		Params: &Params{
+			Hash: "SHA-256",
+		},
 	}, k.(webcrypto.CryptoKeyPair).PrivateKey(), data)
 	if err != nil {
 		t.Error(err)
@@ -277,13 +304,16 @@ func Test_ExportAndImportJsonWebKey(t *testing.T) {
 	}
 
 	// import the key
-	imp, err := subtle.ImportKey(webcrypto.Jwk, jwk, &Algorithm{NamedCurve: P256}, true, webcrypto.Verify)
+	imp, err := subtle.ImportKey(webcrypto.Jwk, jwk, &webcrypto.Algorithm{Name: "ECDSA", Params: &KeyImportParams{NamedCurve: P256}}, true, webcrypto.Verify)
 	if err != nil {
 		t.Error(err)
 	}
 
-	ok, err := subtle.Verify(&Algorithm{
-		Hash: "SHA-256",
+	ok, err := subtle.Verify(&webcrypto.Algorithm{
+		Name: "ECDSA",
+		Params: &Params{
+			Hash: "SHA-256",
+		},
 	}, imp, sig, data)
 	if err != nil {
 		t.Error(err)

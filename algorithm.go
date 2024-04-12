@@ -16,34 +16,41 @@ package webcrypto
 
 import "fmt"
 
-var algorithms = map[string]func() SubtleCrypto{}
+var algorithms = map[string]SubtleCrypto{}
 
 // Algorithm implements the Algorithm dictionary type as specified at
 // §11 https://www.w3.org/TR/WebCryptoAPI/#algorithm-dictionary.
-// We use an interface here because when passing an algorithm to subtle crypto, it can be
-// multiple different param types depending on the algorithm name.
-type Algorithm interface {
-	GetName() string
+//
+// The WebCrypto spec has specific algorithm params extend Algorithm however in Go
+// it can be messy when 'extending' structs so we keep it simple here by
+// having specific algorithm params set in the Params field. This keeps things
+// consistent and simple.
+type Algorithm struct {
+	Name   string
+	Params any
 }
 
 // KeyAlgorithm implements the KeyAlgorithm dictionary type as specified at
 // §12 https://www.w3.org/TR/WebCryptoAPI/#dfn-KeyAlgorithm.
+//
+// We use an interface here because this is the algorithm that is part of a
+// CryptoKey and we don't want the values changed.
 type KeyAlgorithm interface {
-	GetName() string
+	Name() string
 }
 
 // RegisterAlgorithm will register SubtleCrypto implementations referenced by the algorithm
 // name provided. When fn gets called, it should return a NEW instance of the implementation.
-func RegisterAlgorithm(name string, fn func() SubtleCrypto) {
+func RegisterAlgorithm(name string, subtle SubtleCrypto) {
 	_, ok := algorithms[name]
 	if ok {
 		panic(fmt.Sprintf("%s algorithm already registered", name))
 	}
-	algorithms[name] = fn
+	algorithms[name] = subtle
 }
 
-func getSubtleCrypto(alg Algorithm) (func() SubtleCrypto, error) {
-	subtle, ok := algorithms[alg.GetName()]
+func getSubtleCrypto(name string) (SubtleCrypto, error) {
+	subtle, ok := algorithms[name]
 	if !ok {
 		return nil, NewError(ErrNotSupportedError, "algorithm not registered")
 	}

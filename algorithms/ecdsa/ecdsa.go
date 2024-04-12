@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.package rsa
 
-// Package ecdsa implements ECDSA operations as specified in the algorithms at
-// §23 https://www.w3.org/TR/WebCryptoAPI/#ecdsa
+// Package ecdsa implements ECDSA operations as described in the specifications at
+// §23 (https://www.w3.org/TR/WebCryptoAPI/#ecdsa).
 package ecdsa
 
 import (
@@ -23,6 +23,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"math/big"
+	"reflect"
 
 	"github.com/armortal/webcrypto-go"
 	"github.com/armortal/webcrypto-go/util"
@@ -36,12 +37,23 @@ const (
 	P521 string = "P-521"
 )
 
-var (
-	subtle = &subtleCrypto{}
-)
+var subtle *subtleCrypto
+
+type Params struct {
+	Hash string
+}
+
+type KeyGenParams struct {
+	NamedCurve string
+}
+
+type KeyImportParams struct {
+	NamedCurve string
+}
 
 func init() {
-	webcrypto.RegisterAlgorithm(name, func() webcrypto.SubtleCrypto { return subtle })
+	subtle = &subtleCrypto{}
+	webcrypto.RegisterAlgorithm(name, subtle)
 }
 
 // CryptoKey represents an ECDSA cryptography key.
@@ -73,15 +85,6 @@ func (c *CryptoKey) Usages() []webcrypto.KeyUsage {
 	return c.usages
 }
 
-type Algorithm struct {
-	Hash       string
-	NamedCurve string
-}
-
-func (a *Algorithm) GetName() string {
-	return name
-}
-
 // KeyAlgorithm is the implementation of the dictionary specificationn at
 // §23.5 (https://www.w3.org/TR/WebCryptoAPI/#dfn-EcKeyAlgorithm)
 type KeyAlgorithm struct {
@@ -92,83 +95,40 @@ func (k *KeyAlgorithm) NamedCurve() string {
 	return k.namedCurve
 }
 
-func (k *KeyAlgorithm) GetName() string {
+func (k *KeyAlgorithm) Name() string {
 	return name
 }
 
 type subtleCrypto struct{}
 
 // Decrypt is not supported.
-func (s *subtleCrypto) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
+func (s *subtleCrypto) Decrypt(algorithm *webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 // DeriveBits is not supported.
-func (s *subtleCrypto) DeriveBits(algorithm webcrypto.Algorithm, baseKey webcrypto.CryptoKey, length uint64) ([]byte, error) {
+func (s *subtleCrypto) DeriveBits(algorithm *webcrypto.Algorithm, baseKey webcrypto.CryptoKey, length uint64) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 // DeriveKey is not supported.
-func (s *subtleCrypto) DeriveKey(algorithm webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+func (s *subtleCrypto) DeriveKey(algorithm *webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 // Digest is not supported.
-func (s *subtleCrypto) Digest(algorithm webcrypto.Algorithm, data []byte) ([]byte, error) {
+func (s *subtleCrypto) Digest(algorithm *webcrypto.Algorithm, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 // Encrypt is not supported.
-func (s *subtleCrypto) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
+func (s *subtleCrypto) Encrypt(algorithm *webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 // ExportKey will export the given key as per 'Export Key' operation at
 // §23.7 (https://www.w3.org/TR/WebCryptoAPI/#ecdsa-operations).
 func (s *subtleCrypto) ExportKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey) (any, error) {
-	return exportKey(format, key)
-}
-
-// GenerateKey generates a new CryptoKeyPair as per 'Generate Key' operation at
-// §23.7 (https://www.w3.org/TR/WebCryptoAPI/#ecdsa-operations).
-func (s *subtleCrypto) GenerateKey(algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (any, error) {
-	return generateKey(algorithm, extractable, keyUsages...)
-}
-
-// ImportKey is not supported.
-func (s *subtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
-	return importKey(format, keyData, algorithm, extractable, keyUsages...)
-}
-
-// Sign will digest the given data as per 'Sign' operation at
-// §23.7 (https://www.w3.org/TR/WebCryptoAPI/#ecdsa-operations).
-func (s *subtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
-	return sign(algorithm, key, data)
-}
-
-// UnwrapKey is not supported.
-func (s *subtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
-	wrappedKey []byte,
-	unwrappingKey webcrypto.CryptoKey,
-	unwrapAlgorithm webcrypto.Algorithm,
-	unwrappedKeyAlgorithm webcrypto.Algorithm,
-	extractable bool,
-	keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
-	return nil, webcrypto.ErrMethodNotSupported()
-}
-
-// Verify will digest the given data as per 'Verify' operation at
-// §23.7 (https://www.w3.org/TR/WebCryptoAPI/#ecdsa-operations).
-func (s *subtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
-	return verify(algorithm, key, signature, data)
-}
-
-// WrapKey is not supported.
-func (s *subtleCrypto) WrapKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey, wrappingKey webcrypto.CryptoKey, wrapAlgorithm webcrypto.Algorithm) (any, error) {
-	return nil, webcrypto.ErrMethodNotSupported()
-}
-
-func exportKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey) (any, error) {
 	if !key.Extractable() {
 		return nil, webcrypto.NewError(webcrypto.ErrInvalidAccessError, "key not extractable")
 	}
@@ -215,12 +175,12 @@ func exportKeyJwk(key *CryptoKey) (*webcrypto.JsonWebKey, error) {
 	return jwk, nil
 }
 
-func generateKey(algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKeyPair, error) {
-	// ensure its the correct algorithm
-	alg, err := getAlgorithm(algorithm)
-	if err != nil {
-		return nil, err
-	}
+// GenerateKey generates a new CryptoKeyPair as per 'Generate Key' operation at
+// §23.7 (https://www.w3.org/TR/WebCryptoAPI/#ecdsa-operations).
+func (s *subtleCrypto) GenerateKey(algorithm *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (any, error) {
+	nameAndParamsOrPanic[*KeyGenParams](algorithm)
+	params := algorithm.Params.(*KeyGenParams)
+
 	// If usages contains an entry which is not "sign" or "verify", then throw a SyntaxError.
 	if err := util.AreUsagesValid([]webcrypto.KeyUsage{
 		webcrypto.Sign,
@@ -230,7 +190,7 @@ func generateKey(algorithm webcrypto.Algorithm, extractable bool, keyUsages ...w
 	}
 
 	var crv elliptic.Curve
-	switch alg.NamedCurve {
+	switch params.NamedCurve {
 	case "P-256":
 		crv = elliptic.P256()
 	case "P-384":
@@ -249,7 +209,7 @@ func generateKey(algorithm webcrypto.Algorithm, extractable bool, keyUsages ...w
 
 	// create the key algorithm
 	kalg := &KeyAlgorithm{
-		namedCurve: alg.NamedCurve,
+		namedCurve: params.NamedCurve,
 	}
 
 	// create the crypto key for the public key
@@ -278,11 +238,10 @@ func generateKey(algorithm webcrypto.Algorithm, extractable bool, keyUsages ...w
 	return webcrypto.NewCryptoKeyPair(pub, priv), nil
 }
 
-func importKey(format webcrypto.KeyFormat, keyData any, algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
-	alg, err := getAlgorithm(algorithm)
-	if err != nil {
-		return nil, err
-	}
+// ImportKey is not supported.
+func (s *subtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+	nameAndParamsOrPanic[*KeyImportParams](algorithm)
+	params := algorithm.Params.(*KeyImportParams)
 
 	switch format {
 	case webcrypto.Jwk:
@@ -290,13 +249,13 @@ func importKey(format webcrypto.KeyFormat, keyData any, algorithm webcrypto.Algo
 		if !ok {
 			return nil, webcrypto.NewError(webcrypto.ErrDataError, "keyData must be *webcrypto.JsonWebKey")
 		}
-		return importKeyJwk(jwk, alg, extractable, keyUsages...)
+		return importKeyJwk(jwk, params, extractable, keyUsages...)
 	case webcrypto.PKCS8:
 		b, ok := keyData.([]byte)
 		if !ok {
 			return nil, webcrypto.NewError(webcrypto.ErrDataError, "keyData must be []byte")
 		}
-		return importKeyPKCS8(b, alg, extractable, keyUsages...)
+		return importKeyPKCS8(b, params, extractable, keyUsages...)
 	default:
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "key format not supported")
 	}
@@ -308,7 +267,7 @@ func importKey(format webcrypto.KeyFormat, keyData any, algorithm webcrypto.Algo
 // Although the specification states that we should first analyse the private key info as we construct our
 // crypto key, the standard go library doesn't support access to the underlying pkcs8 struct so
 // the implementation in this library will take these values from the algorithm provided in the params.
-func importKeyPKCS8(keyData []byte, algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+func importKeyPKCS8(keyData []byte, params *KeyImportParams, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
 	if err := util.AreUsagesValid(
 		[]webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.UnwrapKey}, keyUsages); err != nil {
 		return nil, err
@@ -320,7 +279,7 @@ func importKeyPKCS8(keyData []byte, algorithm *Algorithm, extractable bool, keyU
 	}
 
 	priv := key.(*ecdsa.PrivateKey)
-	switch algorithm.NamedCurve {
+	switch params.NamedCurve {
 	case P256:
 		if priv.Curve == elliptic.P256() {
 			break
@@ -340,7 +299,7 @@ func importKeyPKCS8(keyData []byte, algorithm *Algorithm, extractable bool, keyU
 	ck := &CryptoKey{
 		isPrivate: true,
 		alg: &KeyAlgorithm{
-			namedCurve: algorithm.NamedCurve,
+			namedCurve: params.NamedCurve,
 		},
 		priv:   key.(*ecdsa.PrivateKey),
 		usages: keyUsages,
@@ -354,7 +313,7 @@ func importKeyPKCS8(keyData []byte, algorithm *Algorithm, extractable bool, keyU
 
 // importKeyJwk will import a JWK. The method of importing JWK is specified at
 // §22.4 importKey (https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep-operations).
-func importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+func importKeyJwk(keyData *webcrypto.JsonWebKey, params *KeyImportParams, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
 	// If the "kty" field of jwk is not a case-sensitive string match
 	// to "EC", then throw a DataError.
 	if keyData.Kty != "EC" {
@@ -362,12 +321,12 @@ func importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *Algorithm, extractab
 	}
 
 	// the 'crv' in the jwk must match the named curve in the provided algorithm
-	if keyData.Crv != algorithm.NamedCurve {
+	if keyData.Crv != params.NamedCurve {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "crv mismatch")
 	}
 
 	// retrieve the curve
-	curve, err := getCurve(algorithm.NamedCurve)
+	curve, err := getCurve(params.NamedCurve)
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +335,7 @@ func importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *Algorithm, extractab
 		isPrivate: false,
 		ext:       extractable,
 		alg: &KeyAlgorithm{
-			namedCurve: algorithm.NamedCurve,
+			namedCurve: params.NamedCurve,
 		},
 		usages: keyUsages,
 	}
@@ -445,27 +404,27 @@ func importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *Algorithm, extractab
 	return ck, nil
 }
 
-func sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
+// Sign will digest the given data as per 'Sign' operation at
+// §23.7 (https://www.w3.org/TR/WebCryptoAPI/#ecdsa-operations).
+func (c *subtleCrypto) Sign(algorithm *webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
+	nameAndParamsOrPanic[*Params](algorithm)
+	params := algorithm.Params.(*Params)
+
 	if key.Type() != webcrypto.Private {
 		return nil, webcrypto.NewError(webcrypto.ErrInvalidAccessError, "key must be an *ecdsa.CryptoKey private key")
 	}
-	// ensure its the correct algorithm
-	alg, err := getAlgorithm(algorithm)
-	if err != nil {
-		return nil, err
-	}
-
 	// ensure we have a valid key
 	pk, ok := key.(*CryptoKey)
 	if !ok {
 		return nil, webcrypto.NewError(webcrypto.ErrInvalidAccessError, "key must be an *ecdsa.CryptoKey")
 	}
+
 	if key.Type() != webcrypto.Private {
 		return nil, webcrypto.NewError(webcrypto.ErrInvalidAccessError, "key must be a private *ecdsa.CryptoKey")
 	}
 
 	// get the hasher and digest
-	hash, err := util.GetHash(alg.Hash)
+	hash, err := util.GetHash(params.Hash)
 	if err != nil {
 		return nil, err
 	}
@@ -486,14 +445,25 @@ func sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) (
 	return append(r.Bytes(), s.Bytes()...), nil
 }
 
-func verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
+// UnwrapKey is not supported.
+func (s *subtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
+	wrappedKey []byte,
+	unwrappingKey webcrypto.CryptoKey,
+	unwrapAlgorithm *webcrypto.Algorithm,
+	unwrappedKeyAlgorithm *webcrypto.Algorithm,
+	extractable bool,
+	keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+	return nil, webcrypto.ErrMethodNotSupported()
+}
+
+// Verify will digest the given data as per 'Verify' operation at
+// §23.7 (https://www.w3.org/TR/WebCryptoAPI/#ecdsa-operations).
+func (c *subtleCrypto) Verify(algorithm *webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
+	nameAndParamsOrPanic[*Params](algorithm)
+	params := algorithm.Params.(*Params)
+
 	if key.Type() != webcrypto.Public {
 		return false, webcrypto.NewError(webcrypto.ErrInvalidAccessError, "key must be an *ecdsa.CryptoKey public key")
-	}
-	// ensure its the correct algorithm
-	alg, err := getAlgorithm(algorithm)
-	if err != nil {
-		return false, err
 	}
 
 	// ensure we have a valid key
@@ -503,7 +473,7 @@ func verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []
 	}
 
 	// get the hasher and digest
-	hash, err := util.GetHash(alg.Hash)
+	hash, err := util.GetHash(params.Hash)
 	if err != nil {
 		return false, err
 	}
@@ -520,15 +490,9 @@ func verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []
 	return ecdsa.Verify(pk.pub, digest, big.NewInt(0).SetBytes(r), big.NewInt(0).SetBytes(s)), nil
 }
 
-func getAlgorithm(a webcrypto.Algorithm) (*Algorithm, error) {
-	if a == nil {
-		return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm must be *ecdsa.Algorithm")
-	}
-	alg, ok := a.(*Algorithm)
-	if !ok {
-		return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm must be *ecdsa.Algorithm")
-	}
-	return alg, nil
+// WrapKey is not supported.
+func (s *subtleCrypto) WrapKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey, wrappingKey webcrypto.CryptoKey, wrapAlgorithm *webcrypto.Algorithm) (any, error) {
+	return nil, webcrypto.ErrMethodNotSupported()
 }
 
 // getCurve will return an elliptic.Curve from the given named curve or error
@@ -544,4 +508,15 @@ func getCurve(namedCurve string) (elliptic.Curve, error) {
 	default:
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, fmt.Sprintf("curve %s not supported", namedCurve))
 	}
+}
+
+func nameAndParamsOrPanic[T any](alg *webcrypto.Algorithm) T {
+	if alg.Name != "ECDSA" {
+		panic(fmt.Sprintf("invalid algorithm name %s", name))
+	}
+	t, ok := alg.Params.(T)
+	if !ok {
+		panic(fmt.Sprintf("Params must be %s", reflect.TypeFor[T]().Name()))
+	}
+	return t
 }
