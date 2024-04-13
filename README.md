@@ -14,10 +14,14 @@ An implementation of the W3C Web Cryptography API specification (https://www.w3.
 - [Getting started](#getting-started)
 - [Algorithms](#algorithms)
 	- [ECDSA](#ecdsa)
+		- [Parameter Definitions](#parameter-definitions)
+		- [Examples](#examples)
 	- [HMAC](#hmac)
 	- [RSA-OAEP](#rsa-oaep)
 	- [SHA](#sha)
 - [Contributing](#contributing)
+- [Appendix](#appendix)
+	- [Hash Algorithms](#hash-algorithms)
 
 ## Background
 
@@ -46,9 +50,46 @@ This library is still in active development and all algorithms are not yet suppo
 
 ## Algorithms
 
+When passing algorithms params into subtle functions, we use the `webcrypto.Algorithm` struct. It has the following properties:
+
+| Field | Type | Description |
+| :---- | :--- | :---------- |
+| Name | `string` | The algorithm name. |
+| Params | `any` | The algorithm parameters as defined by the parameters described by that algorithm in the WebCrypto specification. |
+
+For each algorithm and function described below, listed are the appropriate algorithm params that need to be passed in.
+
 ### ECDSA
 
 The **ECDSA** algorithm is the implementation of operations described in [§23](https://www.w3.org/TR/WebCryptoAPI/#ecdsa) of the W3C specification.
+
+#### Parameter Definitions
+
+##### Params
+
+As specified in [§23.1](https://www.w3.org/TR/WebCryptoAPI/#EcdsaParams-dictionary)
+
+| Field | Type | Description |
+| :---- | :--- | :---------- |
+| Hash | `string` | The hash algorithm to use. See the supported [hash algorithms](#hash-algorithms) |
+
+##### KeyGenParams
+
+As specified in [§23.4](https://www.w3.org/TR/WebCryptoAPI/#EcKeyGenParams-dictionary)
+
+| Field | Type | Description |
+| :---- | :--- | :---------- |
+| NamedCurve | `string` | A valid named curve. One of `P-256`, `P-384`, or `P-521`. |
+
+##### KeyImportParams
+
+As specified in [§23.6](https://www.w3.org/TR/WebCryptoAPI/#EcKeyImportParams-dictionary)
+
+| Field | Type | Description |
+| :---- | :--- | :---------- |
+| NamedCurve | `string` | A valid named curve. One of `P-256`, `P-384`, or `P-521`. |
+
+#### Examples
 
 ```go
 package main
@@ -59,28 +100,41 @@ import (
 )
 
 func main() {
-	// generate a new ECDSA key
+	// generate a new P-256 ECDSA key
 	key, err := webcrypto.Subtle().GenerateKey(
-		&ecdsa.Algorithm{
+	&webcrypto.Algorithm{
+		Name: "ECDSA",
+		Params: &ecdsa.KeyGenParams{
 			NamedCurve: "P-256",
-		}, true, webcrypto.Sign, webcrypto.Verify)
+		},
+	}, true, []webcrypto.KeyUsage{
+		webcrypto.Sign,
+		webcrypto.Verify,
+	})
 	if err != nil {
 		panic(err)
 	}
 
+	// key returned is a webcrypto.CryptoKeyPair
 	ckp := key.(webcrypto.CryptoKeyPair)
 
 	// sign some data with the private key
-	sig, err := webcrypto.Subtle().Sign(&ecdsa.Algorithm{
-		Hash: "SHA-256",
+	sig, err := webcrypto.Subtle().Sign(&webcrypto.Algorithm{
+		Name: "ECDSA",
+		Params: &ecdsa.Params{
+			Hash: "SHA-256",
+		},
 	}, ckp.PrivateKey(), []byte("test"))
 	if err != nil {
 		panic(err)
 	}
 
 	// verify the signature with the public key
-	ok, err := webcrypto.Subtle().Verify(&ecdsa.Algorithm{
-		Hash: "SHA-256",
+	ok, err := webcrypto.Subtle().Verify(&webcrypto.Algorithm{
+		Name: "ECDSA",
+		Params: &ecdsa.Params{
+			Hash: "SHA-256",
+		}
 	}, ckp.PublicKey(), sig, []byte("test"))
 	if err != nil {
 		panic(err)
@@ -89,6 +143,31 @@ func main() {
 	if !ok {
 		// didn't verify - do something
 	}
+
+	// export the public/private key as webcrypto.JsonWebKey
+	out, err := webcrypto.Subtle().ExportKey(webcrypto.JWK, ckp.PrivateKey())
+	if err != nil {
+		panic(err)
+	}
+
+	jwk := out.(webcrypto.JsonWebKey)
+
+	// do something with jwk
+
+	// import a public/private key and return webcrypto.CryptoKey
+	ck, err := webcrypto.Subtle().ImportKey(webcrypto.JWK, jwk, &webcrypto.Algorithm{
+		Name: "ECDSA",
+		Params: &ecdsa.KeyImportParams{
+			NamedCurve: "P-256",
+		},
+	}, true, []webcrypto.KeyUsages{
+		webcrypto.Sign,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	// do something with the imported key
 }
 ```
 
@@ -229,7 +308,16 @@ func main() {
 }
 ```
 
-
 ## Contributing
 
 If you have found a bug or would like to see new features, please create a new issue in this repository. If there is an issue that poses a security risk, please refrain from posting the issue publicly and contact [support@armortal.com](mailto://support@armortal.com) instead.
+
+## Apendix
+
+### Hash Algorithms
+
+Unless otherwise specified by a particular algorithm, the supported hash algorithms are 
+- `SHA-1`
+- `SHA-256`
+- `SHA-384`
+- `SHA-512`

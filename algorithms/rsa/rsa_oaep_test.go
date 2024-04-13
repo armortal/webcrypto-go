@@ -26,7 +26,7 @@ import (
 )
 
 func TestEncryptDecrypt(t *testing.T) {
-	key, err := subtle.GenerateKey(&webcrypto.Algorithm{
+	key, err := oaepSubtle.GenerateKey(&webcrypto.Algorithm{
 		Name: "RSA-OAEP",
 		Params: &HashedKeyGenParams{
 			KeyGenParams: KeyGenParams{
@@ -41,18 +41,18 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 
 	msg := []byte("helloworld")
-	b, err := subtle.Encrypt(&webcrypto.Algorithm{
+	b, err := oaepSubtle.Encrypt(&webcrypto.Algorithm{
 		Name:   "RSA-OAEP",
 		Params: &OaepParams{},
-	}, key.(*CryptoKeyPair).PublicKey(), msg)
+	}, key.(webcrypto.CryptoKeyPair).PublicKey(), msg)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	v, err := subtle.Decrypt(&webcrypto.Algorithm{
+	v, err := oaepSubtle.Decrypt(&webcrypto.Algorithm{
 		Name:   "RSA-OAEP",
 		Params: &OaepParams{},
-	}, key.(*CryptoKeyPair).PrivateKey(), b)
+	}, key.(webcrypto.CryptoKeyPair).PrivateKey(), b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestEncryptDecrypt(t *testing.T) {
 }
 
 func TestOaep_ExportKey(t *testing.T) {
-	key, err := subtle.GenerateKey(&webcrypto.Algorithm{
+	key, err := oaepSubtle.GenerateKey(&webcrypto.Algorithm{
 		Name: "RSA-OAEP",
 		Params: &HashedKeyGenParams{
 			KeyGenParams: KeyGenParams{
@@ -78,7 +78,7 @@ func TestOaep_ExportKey(t *testing.T) {
 
 	t.Run("export jwk", func(t *testing.T) {
 		pk := key.(webcrypto.CryptoKeyPair).PrivateKey()
-		out, err := subtle.ExportKey(webcrypto.Jwk, pk)
+		out, err := oaepSubtle.ExportKey(webcrypto.Jwk, pk)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -136,7 +136,7 @@ func TestOaep_ExportKey(t *testing.T) {
 	})
 
 	t.Run("export PKCS8", func(t *testing.T) {
-		out, err := subtle.ExportKey(webcrypto.PKCS8, key.(*CryptoKeyPair).PrivateKey())
+		out, err := oaepSubtle.ExportKey(webcrypto.PKCS8, key.(webcrypto.CryptoKeyPair).PrivateKey())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -157,7 +157,7 @@ func TestOaep_ExportKey(t *testing.T) {
 
 func TestOaep_GenerateKey(t *testing.T) {
 	t.Run("generate successful key pair", func(t *testing.T) {
-		key, err := subtle.GenerateKey(&webcrypto.Algorithm{
+		key, err := oaepSubtle.GenerateKey(&webcrypto.Algorithm{
 			Name: "RSA-OAEP",
 			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
@@ -212,7 +212,7 @@ func TestOaep_GenerateKey(t *testing.T) {
 	})
 
 	t.Run("invalid exponent", func(t *testing.T) {
-		_, err := subtle.GenerateKey(&webcrypto.Algorithm{
+		_, err := oaepSubtle.GenerateKey(&webcrypto.Algorithm{
 			Name: "RSA-OAEP",
 			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
@@ -228,7 +228,7 @@ func TestOaep_GenerateKey(t *testing.T) {
 	})
 
 	t.Run("invalid usages", func(t *testing.T) {
-		_, err := subtle.GenerateKey(&webcrypto.Algorithm{
+		_, err := oaepSubtle.GenerateKey(&webcrypto.Algorithm{
 			Name: "RSA-OAEP",
 			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
@@ -244,7 +244,7 @@ func TestOaep_GenerateKey(t *testing.T) {
 	})
 
 	t.Run("invalid algorithm name", func(t *testing.T) {
-		_, err := subtle.GenerateKey(&webcrypto.Algorithm{
+		_, err := oaepSubtle.GenerateKey(&webcrypto.Algorithm{
 			Name: "RSA-OAEP-invalid-name",
 			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
@@ -262,7 +262,7 @@ func TestOaep_GenerateKey(t *testing.T) {
 }
 
 func TestOaep_ImportKey(t *testing.T) {
-	key, err := subtle.GenerateKey(&webcrypto.Algorithm{
+	key, err := oaepSubtle.GenerateKey(&webcrypto.Algorithm{
 		Name: "RSA-OAEP",
 		Params: &HashedKeyGenParams{
 			KeyGenParams: KeyGenParams{
@@ -276,13 +276,13 @@ func TestOaep_ImportKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data, err := subtle.ExportKey(webcrypto.Jwk, key.(webcrypto.CryptoKeyPair).PrivateKey())
+	data, err := oaepSubtle.ExportKey(webcrypto.Jwk, key.(webcrypto.CryptoKeyPair).PrivateKey())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("import jwk", func(t *testing.T) {
-		in, err := subtle.ImportKey(webcrypto.Jwk, data, &webcrypto.Algorithm{
+		in, err := oaepSubtle.ImportKey(webcrypto.Jwk, data, &webcrypto.Algorithm{
 			Name: "RSA-OAEP",
 			Params: &HashedImportParams{
 				Hash: "SHA-256",
