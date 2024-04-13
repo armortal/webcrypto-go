@@ -48,7 +48,7 @@ func (s *subtleCrypto) DeriveBits(algorithm *webcrypto.Algorithm, baseKey webcry
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (s *subtleCrypto) DeriveKey(algorithm *webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+func (s *subtleCrypto) DeriveKey(algorithm *webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
@@ -73,11 +73,11 @@ func (a *subtleCrypto) ExportKey(format webcrypto.KeyFormat, key webcrypto.Crypt
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *subtleCrypto) GenerateKey(algorithm *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (any, error) {
+func (a *subtleCrypto) GenerateKey(algorithm *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (any, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *subtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+func (a *subtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
@@ -91,7 +91,7 @@ func (a *subtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
 	unwrapAlgorithm *webcrypto.Algorithm,
 	unwrappedKeyAlgorithm *webcrypto.Algorithm,
 	extractable bool,
-	keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+	keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 

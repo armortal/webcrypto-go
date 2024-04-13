@@ -112,7 +112,7 @@ func (s *subtleCrypto) DeriveBits(algorithm *webcrypto.Algorithm, baseKey webcry
 }
 
 // DeriveKey is not supported.
-func (s *subtleCrypto) DeriveKey(algorithm *webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+func (s *subtleCrypto) DeriveKey(algorithm *webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
@@ -177,7 +177,7 @@ func exportKeyJwk(key *CryptoKey) (*webcrypto.JsonWebKey, error) {
 
 // GenerateKey generates a new CryptoKeyPair as per 'Generate Key' operation at
 // §23.7 (https://www.w3.org/TR/WebCryptoAPI/#ecdsa-operations).
-func (s *subtleCrypto) GenerateKey(algorithm *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (any, error) {
+func (s *subtleCrypto) GenerateKey(algorithm *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (any, error) {
 	nameAndParamsOrPanic[*KeyGenParams](algorithm)
 	params := algorithm.Params.(*KeyGenParams)
 
@@ -239,7 +239,7 @@ func (s *subtleCrypto) GenerateKey(algorithm *webcrypto.Algorithm, extractable b
 }
 
 // ImportKey is not supported.
-func (s *subtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+func (s *subtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	nameAndParamsOrPanic[*KeyImportParams](algorithm)
 	params := algorithm.Params.(*KeyImportParams)
 
@@ -249,13 +249,13 @@ func (s *subtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algori
 		if !ok {
 			return nil, webcrypto.NewError(webcrypto.ErrDataError, "keyData must be *webcrypto.JsonWebKey")
 		}
-		return importKeyJwk(jwk, params, extractable, keyUsages...)
+		return importKeyJwk(jwk, params, extractable, keyUsages)
 	case webcrypto.PKCS8:
 		b, ok := keyData.([]byte)
 		if !ok {
 			return nil, webcrypto.NewError(webcrypto.ErrDataError, "keyData must be []byte")
 		}
-		return importKeyPKCS8(b, params, extractable, keyUsages...)
+		return importKeyPKCS8(b, params, extractable, keyUsages)
 	default:
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "key format not supported")
 	}
@@ -267,7 +267,7 @@ func (s *subtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algori
 // Although the specification states that we should first analyse the private key info as we construct our
 // crypto key, the standard go library doesn't support access to the underlying pkcs8 struct so
 // the implementation in this library will take these values from the algorithm provided in the params.
-func importKeyPKCS8(keyData []byte, params *KeyImportParams, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+func importKeyPKCS8(keyData []byte, params *KeyImportParams, extractable bool, keyUsages []webcrypto.KeyUsage) (*CryptoKey, error) {
 	if err := util.AreUsagesValid(
 		[]webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.UnwrapKey}, keyUsages); err != nil {
 		return nil, err
@@ -313,7 +313,7 @@ func importKeyPKCS8(keyData []byte, params *KeyImportParams, extractable bool, k
 
 // importKeyJwk will import a JWK. The method of importing JWK is specified at
 // §22.4 importKey (https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep-operations).
-func importKeyJwk(keyData *webcrypto.JsonWebKey, params *KeyImportParams, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+func importKeyJwk(keyData *webcrypto.JsonWebKey, params *KeyImportParams, extractable bool, keyUsages []webcrypto.KeyUsage) (*CryptoKey, error) {
 	// If the "kty" field of jwk is not a case-sensitive string match
 	// to "EC", then throw a DataError.
 	if keyData.Kty != "EC" {
@@ -452,7 +452,7 @@ func (s *subtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
 	unwrapAlgorithm *webcrypto.Algorithm,
 	unwrappedKeyAlgorithm *webcrypto.Algorithm,
 	extractable bool,
-	keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+	keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 

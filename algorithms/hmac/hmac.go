@@ -126,7 +126,7 @@ func (a *subtleCrypto) DeriveBits(algorithm *webcrypto.Algorithm, baseKey webcry
 }
 
 // DeriveKey is not supported.
-func (a *subtleCrypto) DeriveKey(algorithm *webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+func (a *subtleCrypto) DeriveKey(algorithm *webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
@@ -190,15 +190,15 @@ func exportKeyAsJsonWebKey(key *CryptoKey) (*webcrypto.JsonWebKey, error) {
 	return jwk, nil
 }
 
-func (a *subtleCrypto) GenerateKey(algorithm *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (any, error) {
+func (a *subtleCrypto) GenerateKey(algorithm *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (any, error) {
 	params, ok := algorithm.Params.(*KeyGenParams)
 	if !ok {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "params must be *hmac.KeyGenParams")
 	}
-	return generateKey(params, extractable, keyUsages...)
+	return generateKey(params, extractable, keyUsages)
 }
 
-func generateKey(params *KeyGenParams, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+func generateKey(params *KeyGenParams, extractable bool, keyUsages []webcrypto.KeyUsage) (*CryptoKey, error) {
 	var blockSize int
 	switch params.Hash {
 	case "SHA-1":
@@ -246,7 +246,7 @@ func generateKey(params *KeyGenParams, extractable bool, keyUsages ...webcrypto.
 	}, nil
 }
 
-func (a *subtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+func (a *subtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	params, ok := algorithm.Params.(*ImportParams)
 	if !ok {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "Params must be *hmac.ImportParams")
@@ -256,15 +256,15 @@ func (a *subtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algori
 	}
 	switch format {
 	case webcrypto.Jwk:
-		return importKeyFromJsonWebKey(keyData.(*webcrypto.JsonWebKey), params, extractable, keyUsages...)
+		return importKeyFromJsonWebKey(keyData.(*webcrypto.JsonWebKey), params, extractable, keyUsages)
 	case webcrypto.Raw:
-		return importKeyFromRaw(keyData.([]byte), params, extractable, keyUsages...)
+		return importKeyFromRaw(keyData.([]byte), params, extractable, keyUsages)
 	default:
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, fmt.Sprintf("format %s not supported", format))
 	}
 }
 
-func importKeyFromJsonWebKey(keyData *webcrypto.JsonWebKey, params *ImportParams, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+func importKeyFromJsonWebKey(keyData *webcrypto.JsonWebKey, params *ImportParams, extractable bool, keyUsages []webcrypto.KeyUsage) (*CryptoKey, error) {
 	if keyData.Kty != "oct" {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "kty is not 'oct'")
 	}
@@ -347,7 +347,7 @@ loop:
 	}, nil
 }
 
-func importKeyFromRaw(keyData []byte, params *ImportParams, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+func importKeyFromRaw(keyData []byte, params *ImportParams, extractable bool, keyUsages []webcrypto.KeyUsage) (*CryptoKey, error) {
 	length := len(keyData) * 8
 	if length == 0 {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "length must not be 0")
@@ -401,7 +401,7 @@ func (a *subtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
 	unwrapAlgorithm *webcrypto.Algorithm,
 	unwrappedKeyAlgorithm *webcrypto.Algorithm,
 	extractable bool,
-	keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+	keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 

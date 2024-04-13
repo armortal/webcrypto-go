@@ -50,24 +50,27 @@ This library is still in active development and all algorithms are not yet suppo
 
 ## Algorithms
 
-When passing algorithms params into subtle functions, we use the `webcrypto.Algorithm` struct. It has the following properties:
+When passing algorithm params into subtle functions, we use the `webcrypto.Algorithm` struct. It has the following properties:
 
 | Field | Type | Description |
 | :---- | :--- | :---------- |
 | Name | `string` | The algorithm name. |
 | Params | `any` | The algorithm parameters as defined by the parameters described by that algorithm in the WebCrypto specification. |
 
-For each algorithm and function described below, listed are the appropriate algorithm params that need to be passed in.
+See specific algorithms for the parameter types to be passed in.
 
 ### ECDSA
 
-The **ECDSA** algorithm is the implementation of operations described in [§23](https://www.w3.org/TR/WebCryptoAPI/#ecdsa) of the W3C specification.
+The **ECDSA** algorithm is the implementation of operations described in [§23](https://www.w3.org/TR/WebCryptoAPI/#ecdsa) of the W3C specification. You can import it into your program with `import "github.com/armortal/webcrypto-go/algorithms/ecdsa"`.
 
 #### Parameter Definitions
 
+Below are the parameters that supported ECDSA operations will take according to 
+[§23.2](https://www.w3.org/TR/WebCryptoAPI/#ecdsa-registration).
+
 ##### Params
 
-As specified in [§23.1](https://www.w3.org/TR/WebCryptoAPI/#EcdsaParams-dictionary)
+As specified in [§23.3](https://www.w3.org/TR/WebCryptoAPI/#EcdsaParams-dictionary)
 
 | Field | Type | Description |
 | :---- | :--- | :---------- |
@@ -102,15 +105,15 @@ import (
 func main() {
 	// generate a new P-256 ECDSA key
 	key, err := webcrypto.Subtle().GenerateKey(
-	&webcrypto.Algorithm{
-		Name: "ECDSA",
-		Params: &ecdsa.KeyGenParams{
-			NamedCurve: "P-256",
-		},
-	}, true, []webcrypto.KeyUsage{
-		webcrypto.Sign,
-		webcrypto.Verify,
-	})
+		&webcrypto.Algorithm{
+			Name: "ECDSA",
+			Params: &ecdsa.KeyGenParams{
+				NamedCurve: "P-256",
+			},
+		}, true, []webcrypto.KeyUsage{
+			webcrypto.Sign,
+			webcrypto.Verify,
+		})
 	if err != nil {
 		panic(err)
 	}
@@ -134,7 +137,7 @@ func main() {
 		Name: "ECDSA",
 		Params: &ecdsa.Params{
 			Hash: "SHA-256",
-		}
+		},
 	}, ckp.PublicKey(), sig, []byte("test"))
 	if err != nil {
 		panic(err)
@@ -145,7 +148,7 @@ func main() {
 	}
 
 	// export the public/private key as webcrypto.JsonWebKey
-	out, err := webcrypto.Subtle().ExportKey(webcrypto.JWK, ckp.PrivateKey())
+	out, err := webcrypto.Subtle().ExportKey(webcrypto.Jwk, ckp.PrivateKey())
 	if err != nil {
 		panic(err)
 	}
@@ -154,26 +157,51 @@ func main() {
 
 	// do something with jwk
 
-	// import a public/private key and return webcrypto.CryptoKey
-	ck, err := webcrypto.Subtle().ImportKey(webcrypto.JWK, jwk, &webcrypto.Algorithm{
+	// import a public/private key
+	ck, err := webcrypto.Subtle().ImportKey(webcrypto.Jwk, jwk, &webcrypto.Algorithm{
 		Name: "ECDSA",
 		Params: &ecdsa.KeyImportParams{
 			NamedCurve: "P-256",
 		},
-	}, true, []webcrypto.KeyUsages{
+	}, true, []webcrypto.KeyUsage{
 		webcrypto.Sign,
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	// do something with the imported key
+	// do something with the imported webcrypto.CryptoKey
 }
 ```
 
 ### HMAC
 
-The **HMAC** algorithm is the implementation of operations described in [§29](https://www.w3.org/TR/WebCryptoAPI/#hmac) of the W3C specification.
+The **HMAC** algorithm is the implementation of operations described in [§29](https://www.w3.org/TR/WebCryptoAPI/#hmac) of the W3C specification. You can import it into your program with `import "github.com/armortal/webcrypto-go/algorithms/hmac"`.
+
+#### Parameter Definitions
+
+Below are the parameters that supported HMAC operations will take according to 
+[§29.2](https://www.w3.org/TR/WebCryptoAPI/#hmac-registration).
+
+##### KeyGenParams
+
+As specified in [§29.5](https://www.w3.org/TR/WebCryptoAPI/#hmac-keygen-params)
+
+| Field | Type | Description |
+| :---- | :--- | :---------- |
+| Hash | `string` | The inner hash function to use. See the supported [hash algorithms](#hash-algorithms). |
+| Length | `uint64` | The length (in bits) of the key to generate. If unspecified, the recommended length will be used, which is the size of the associated hash function's block size. |
+
+###### ImportParams
+
+As specified in [§29.3](https://www.w3.org/TR/WebCryptoAPI/#hmac-importparams)
+
+| Field | Type | Description |
+| :---- | :--- | :---------- |
+| Hash | `string` | The inner hash function to use. See the supported [hash algorithms](#hash-algorithms). |
+| Length | `uint64` | The length (in bits) of the key. |
+
+#### Examples
 
 ```go
 package main
@@ -184,61 +212,102 @@ import (
 )
 
 func main() {
-	// Generate a new key. A *hmac.CryptoKey is returned which implements webcrypto.CryptoKey
+	// generate a new key
 	key, err := webcrypto.Subtle().GenerateKey(
-		&Algorithm{
-			Name: "ECDSA",
-			Params: ecdsa.KeyGenParams{
-
-			}
-		}
-		&hmac.Algorithm{
-			KeyGenParams: &hmac.KeyGenParams{
+		&webcrypto.Algorithm{
+			Name: "HMAC",
+			Params: &hmac.KeyGenParams{
 				Hash: "SHA-256",
 			},
-		}, true, webcrypto.Sign, webcrypto.Verify)
+		}, true, []webcrypto.KeyUsage{
+			webcrypto.Sign,
+			webcrypto.Verify,
+	})
 
+	if err != nil {
+		panic(err)
+	}
+
+	// the generated key returns a webcrypto.CryptoKey
 	cryptokey := key.(webcrypto.CryptoKey)
 
-	// Sign some data. Note that this library uses io.Reader to pass bytes of data.
-	sig, err := webcrypto.Subtle().Sign(
-		&hmac.Algorithm{}, cryptokey, bytes.NewReader([]byte("helloworld")))
+	// sign some data - no params required.
+	sig, err := webcrypto.Subtle().Sign(&webcrypto.Algorithm{
+		Name: "HMAC",
+	}, cryptokey, []byte("test"))
 
-	// Verify the signature
-	ok, err := webcrypto.Subtle().Verify(
-		&hmac.Algorithm{}, cryptokey, sig, bytes.NewReader([]byte("helloworld")))
+	if err != nil {
+		panic(err)
+	}
 
-	// Export the key as *webcrypto.JsonWebKey
+	// verify the signature
+	ok, err := webcrypto.Subtle().Verify(&webcrypto.Algorithm{
+		Name: "HMAC",
+	}, cryptokey, sig, []byte("test"))
+
+	if err != nil {
+		panic(err)
+	}
+
+	// export the key as *webcrypto.JsonWebKey
 	out, err := webcrypto.Subtle().ExportKey(webcrypto.Jwk, cryptoKey)
+	if err != nil {
+		panic(err)
+	}
+
 	jwk := out.(*webcrypto.JsonWebKey)
+	// do something with jwk
 
-	// Export the key as raw bytes
-	out, err := webcrypto.Subtle().ExportKey(webcrypto.Raw, cryptoKey)
+	// export the key as raw bytes
+	out, err = webcrypto.Subtle().ExportKey(webcrypto.Raw, cryptoKey)
+	if err != nil {
+		panic(err)
+	}
+
 	raw := out.([]byte)
+	// do something with raw bytes
 
-	// Import a JsonWebKey
+	// import a key from a jwk
 	in, err := webcrypto.Subtle().ImportKey(
 		webcrypto.Jwk, 
 		jwk, 
-		&hmac.Algorithm{
-			ImportParams: &hmac.ImportParams{
+		&webcrypto.Algorithm{
+			Name: "HMAC",
+			Params: &hmac.ImportParams{
 				Hash: "SHA-256",
 			},
 		}, 
 		true, 
-		webcrypto.Sign, webcrypto.Verify)
+		[]webcrypto.KeyUsage{
+			webcrypto.Sign,
+			webcrypto.Verify,
+		})
+	
+	if err != nil {
+		panic(err)
+	}
 
-	// Import a key from raw bytes
-	in, err := webcrypto.Subtle().ImportKey(
+	// import a key from raw bytes
+	in, err = webcrypto.Subtle().ImportKey(
 		webcrypto.Raw, 
 		raw, 
-		&hmac.Algorithm{
-			ImportParams: &hmac.ImportParams{
+		&webcrypto.Algorithm{
+			Name: "HMAC",
+			Params: &hmac.ImportParams{
 				Hash: "SHA-256",
 			},
 		}, 
 		true, 
-		webcrypto.Sign, webcrypto.Verify)
+		[]webcrypto.KeyUsage{
+			webcrypto.Sign,
+			webcrypto.Verify,
+		})
+	
+	if err != nil {
+		panic(err)
+	}
+
+	// do something with your imported keys
 }
 ```
 

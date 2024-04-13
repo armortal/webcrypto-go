@@ -35,7 +35,7 @@ func TestEncryptDecrypt(t *testing.T) {
 			},
 			Hash: "SHA-256",
 		},
-	}, true, webcrypto.Decrypt, webcrypto.Encrypt)
+	}, true, []webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.Encrypt})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestOaep_ExportKey(t *testing.T) {
 			},
 			Hash: "SHA-256",
 		},
-	}, true, webcrypto.Decrypt, webcrypto.Encrypt)
+	}, true, []webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.Encrypt})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func TestOaep_GenerateKey(t *testing.T) {
 				},
 				Hash: "SHA-256",
 			},
-		}, true, webcrypto.Decrypt, webcrypto.Encrypt)
+		}, true, []webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.Encrypt})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -221,7 +221,7 @@ func TestOaep_GenerateKey(t *testing.T) {
 				},
 				Hash: "SHA-256",
 			},
-		}, true)
+		}, true, nil)
 		if err == nil {
 			t.Fatal("error should have been returned")
 		}
@@ -237,7 +237,7 @@ func TestOaep_GenerateKey(t *testing.T) {
 				},
 				Hash: "SHA-256",
 			},
-		}, true)
+		}, true, nil)
 		if err == nil {
 			t.Fatal("error should have been returned")
 		}
@@ -253,7 +253,7 @@ func TestOaep_GenerateKey(t *testing.T) {
 				},
 				Hash: "SHA-256",
 			},
-		}, true)
+		}, true, nil)
 		if err == nil {
 			t.Fatal("error should have been returned")
 		}
@@ -271,7 +271,7 @@ func TestOaep_ImportKey(t *testing.T) {
 			},
 			Hash: "SHA-256",
 		},
-	}, true, webcrypto.Decrypt, webcrypto.Encrypt)
+	}, true, []webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.Encrypt})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,7 +287,7 @@ func TestOaep_ImportKey(t *testing.T) {
 			Params: &HashedImportParams{
 				Hash: "SHA-256",
 			},
-		}, true, webcrypto.Decrypt)
+		}, true, []webcrypto.KeyUsage{webcrypto.Decrypt})
 		if err != nil {
 			t.Fatal(err)
 		}

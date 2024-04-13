@@ -29,7 +29,7 @@ type SubtleCrypto interface {
 
 	// DeriveKey can be used to derive a secret key from a master key.
 	// See  §14.2.7 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-deriveKey)
-	DeriveKey(algorithm *Algorithm, baseKey CryptoKey, derivedKeyType *Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error)
+	DeriveKey(algorithm *Algorithm, baseKey CryptoKey, derivedKeyType *Algorithm, extractable bool, keyUsages []KeyUsage) (CryptoKey, error)
 
 	// Digrest generates a digest of the given data. A digest is a short fixed-length value
 	// derived from some variable-length input. Cryptographic digests should exhibit collision-resistance,
@@ -48,12 +48,12 @@ type SubtleCrypto interface {
 
 	// GenerateKey generates a new key (for symmetric algorithms) or key pair (for public-key algorithms).
 	// See §14.2.6 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-generateKey)
-	GenerateKey(algorithm *Algorithm, extractable bool, keyUsages ...KeyUsage) (any, error)
+	GenerateKey(algorithm *Algorithm, extractable bool, keyUsages []KeyUsage) (any, error)
 
 	// ImportKey imports a key: that is, it takes as input a key in an external, portable format and
 	// gives you a CryptoKey object that you can use in the Web Crypto API.
 	// See §14.2.9 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-importKey)
-	ImportKey(format KeyFormat, keyData any, algorithm *Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error)
+	ImportKey(format KeyFormat, keyData any, algorithm *Algorithm, extractable bool, keyUsages []KeyUsage) (CryptoKey, error)
 
 	// Sign generates a digital signature.
 	// See §14.2.3 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-sign)
@@ -69,7 +69,7 @@ type SubtleCrypto interface {
 		unwrapAlgorithm *Algorithm,
 		unwrappedKeyAlgorithm *Algorithm,
 		extractable bool,
-		keyUsages ...KeyUsage) (CryptoKey, error)
+		keyUsages []KeyUsage) (CryptoKey, error)
 
 	// Verify verifies a digital signature.
 	// See §14.2.4 (https://w3c.github.io/webcrypto/#SubtleCrypto-method-verify)
@@ -107,13 +107,13 @@ func (s *subtleCrypto) DeriveBits(algorithm *Algorithm, baseKey CryptoKey, lengt
 	return subtle.DeriveBits(algorithm, baseKey, length)
 }
 
-func (s *subtleCrypto) DeriveKey(algorithm *Algorithm, baseKey CryptoKey, derivedKeyType *Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error) {
+func (s *subtleCrypto) DeriveKey(algorithm *Algorithm, baseKey CryptoKey, derivedKeyType *Algorithm, extractable bool, keyUsages []KeyUsage) (CryptoKey, error) {
 	algorithmNotNilOrPanic(algorithm)
 	subtle, err := getSubtleCrypto(algorithm.Name)
 	if err != nil {
 		return nil, err
 	}
-	return subtle.DeriveKey(algorithm, baseKey, derivedKeyType, extractable, keyUsages...)
+	return subtle.DeriveKey(algorithm, baseKey, derivedKeyType, extractable, keyUsages)
 }
 
 func (s *subtleCrypto) Digest(algorithm *Algorithm, data []byte) ([]byte, error) {
@@ -143,22 +143,22 @@ func (s *subtleCrypto) ExportKey(format KeyFormat, key CryptoKey) (any, error) {
 	return subtle.ExportKey(format, key)
 }
 
-func (s *subtleCrypto) GenerateKey(algorithm *Algorithm, extractable bool, keyUsages ...KeyUsage) (any, error) {
+func (s *subtleCrypto) GenerateKey(algorithm *Algorithm, extractable bool, keyUsages []KeyUsage) (any, error) {
 	algorithmNotNilOrPanic(algorithm)
 	subtle, err := getSubtleCrypto(algorithm.Name)
 	if err != nil {
 		return nil, err
 	}
-	return subtle.GenerateKey(algorithm, extractable, keyUsages...)
+	return subtle.GenerateKey(algorithm, extractable, keyUsages)
 }
 
-func (s *subtleCrypto) ImportKey(format KeyFormat, keyData any, algorithm *Algorithm, extractable bool, keyUsages ...KeyUsage) (CryptoKey, error) {
+func (s *subtleCrypto) ImportKey(format KeyFormat, keyData any, algorithm *Algorithm, extractable bool, keyUsages []KeyUsage) (CryptoKey, error) {
 	algorithmNotNilOrPanic(algorithm)
 	subtle, err := getSubtleCrypto(algorithm.Name)
 	if err != nil {
 		return nil, err
 	}
-	return subtle.ImportKey(format, keyData, algorithm, extractable, keyUsages...)
+	return subtle.ImportKey(format, keyData, algorithm, extractable, keyUsages)
 }
 
 func (s *subtleCrypto) Sign(algorithm *Algorithm, key CryptoKey, data []byte) ([]byte, error) {
@@ -176,12 +176,12 @@ func (s *subtleCrypto) UnwrapKey(format KeyFormat,
 	unwrapAlgorithm *Algorithm,
 	unwrappedKeyAlgorithm *Algorithm,
 	extractable bool,
-	keyUsages ...KeyUsage) (CryptoKey, error) {
+	keyUsages []KeyUsage) (CryptoKey, error) {
 	subtle, err := getSubtleCrypto(unwrappingKey.Algorithm().Name())
 	if err != nil {
 		return nil, err
 	}
-	return subtle.UnwrapKey(format, wrappedKey, unwrappingKey, unwrapAlgorithm, unwrappedKeyAlgorithm, extractable, keyUsages...)
+	return subtle.UnwrapKey(format, wrappedKey, unwrappingKey, unwrapAlgorithm, unwrappedKeyAlgorithm, extractable, keyUsages)
 }
 
 func (s *subtleCrypto) Verify(algorithm *Algorithm, key CryptoKey, signature []byte, data []byte) (bool, error) {

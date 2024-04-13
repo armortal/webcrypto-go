@@ -66,7 +66,7 @@ func Test_GenerateKey(t *testing.T) {
 			Params: &KeyGenParams{
 				NamedCurve: curve,
 			},
-		}, extractable, usages...)
+		}, extractable, usages)
 		if err != nil {
 			t.Error(err)
 		}
@@ -128,7 +128,7 @@ func Test_SignAndVerify(t *testing.T) {
 		Params: &KeyGenParams{
 			NamedCurve: P256,
 		},
-	}, false, webcrypto.Sign)
+	}, false, []webcrypto.KeyUsage{webcrypto.Sign})
 	if err != nil {
 		t.Error(err)
 	}
@@ -210,7 +210,7 @@ func Test_testData(t *testing.T) {
 		t.Error(err)
 	}
 
-	k, err := subtle.ImportKey(webcrypto.Jwk, &jwk, &webcrypto.Algorithm{Name: "ECDSA", Params: &KeyImportParams{NamedCurve: P256}}, true, webcrypto.Verify)
+	k, err := subtle.ImportKey(webcrypto.Jwk, &jwk, &webcrypto.Algorithm{Name: "ECDSA", Params: &KeyImportParams{NamedCurve: P256}}, true, []webcrypto.KeyUsage{webcrypto.Verify})
 	if err != nil {
 		t.Error(err)
 	}
@@ -240,7 +240,7 @@ func Test_ExportAndImportJsonWebKey(t *testing.T) {
 		Params: &KeyGenParams{
 			NamedCurve: P256,
 		},
-	}, true, webcrypto.Sign)
+	}, true, []webcrypto.KeyUsage{webcrypto.Sign})
 	if err != nil {
 		t.Error(err)
 	}
@@ -304,7 +304,7 @@ func Test_ExportAndImportJsonWebKey(t *testing.T) {
 	}
 
 	// import the key
-	imp, err := subtle.ImportKey(webcrypto.Jwk, jwk, &webcrypto.Algorithm{Name: "ECDSA", Params: &KeyImportParams{NamedCurve: P256}}, true, webcrypto.Verify)
+	imp, err := subtle.ImportKey(webcrypto.Jwk, jwk, &webcrypto.Algorithm{Name: "ECDSA", Params: &KeyImportParams{NamedCurve: P256}}, true, []webcrypto.KeyUsage{webcrypto.Verify})
 	if err != nil {
 		t.Error(err)
 	}

@@ -42,7 +42,7 @@ func TestGenerateKey(t *testing.T) {
 			Hash:   "SHA-256",
 			Length: 512,
 		},
-	}, true, usages...)
+	}, true, usages)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestExportKey(t *testing.T) {
 		Params: &ImportParams{
 			Hash: "SHA-256",
 		},
-	}, true, usages...)
+	}, true, usages)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestImportKey(t *testing.T) {
 		Params: &ImportParams{
 			Hash: "SHA-256",
 		},
-	}, true, usages...)
+	}, true, usages)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestSign(t *testing.T) {
 		Params: &ImportParams{
 			Hash: "SHA-256",
 		},
-	}, true, usages...)
+	}, true, usages)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestVerify(t *testing.T) {
 		Params: &ImportParams{
 			Hash: "SHA-256",
 		},
-	}, true, usages...)
+	}, true, usages)
 	if err != nil {
 		t.Fatal(err)
 	}

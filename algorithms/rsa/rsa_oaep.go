@@ -58,7 +58,7 @@ func (a *oaepSubtleCrypto) DeriveBits(algorithm *webcrypto.Algorithm, baseKey we
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *oaepSubtleCrypto) DeriveKey(algorithm *webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+func (a *oaepSubtleCrypto) DeriveKey(algorithm *webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
@@ -174,7 +174,7 @@ func (a *oaepSubtleCrypto) exportKeyJwk(key *CryptoKey) (*webcrypto.JsonWebKey, 
 	return jwk, nil
 }
 
-func (a *oaepSubtleCrypto) GenerateKey(algorithm *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (any, error) {
+func (a *oaepSubtleCrypto) GenerateKey(algorithm *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (any, error) {
 	// alg, ok := algorithm.(*Algorithm)
 	// if !ok {
 	// 	return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm must be *rsa.HashedKeyGenParams")
@@ -184,7 +184,7 @@ func (a *oaepSubtleCrypto) GenerateKey(algorithm *webcrypto.Algorithm, extractab
 	var err error
 	switch algorithm.Name {
 	case rsaOaep:
-		keys, err = a.generateKeyOaep(params, extractable, keyUsages...)
+		keys, err = a.generateKeyOaep(params, extractable, keyUsages)
 	default:
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "algorithm name is not a valid RSA algorithm")
 	}
@@ -193,7 +193,7 @@ func (a *oaepSubtleCrypto) GenerateKey(algorithm *webcrypto.Algorithm, extractab
 
 // generateKeyOaep will generate a new RSA-OAEP key pair. The method of generating a key is specified at
 // §22.4 generateKey (https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep-operations)
-func (a *oaepSubtleCrypto) generateKeyOaep(algorithm *HashedKeyGenParams, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKeyPair, error) {
+func (a *oaepSubtleCrypto) generateKeyOaep(algorithm *HashedKeyGenParams, extractable bool, keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKeyPair, error) {
 	// If usages contains an entry which is not "encrypt", "decrypt", "wrapKey" or "unwrapKey", then throw a SyntaxError.
 	if err := util.AreUsagesValid([]webcrypto.KeyUsage{
 		webcrypto.Encrypt,
@@ -245,7 +245,7 @@ func (a *oaepSubtleCrypto) generateKeyOaep(algorithm *HashedKeyGenParams, extrac
 	return webcrypto.NewCryptoKeyPair(pub, priv), nil
 }
 
-func (a *oaepSubtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+func (a *oaepSubtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	// alg, ok := algorithm.(*Algorithm)
 	// if !ok {
 	// 	return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm must be *rsa.Algorithm")
@@ -260,13 +260,13 @@ func (a *oaepSubtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, al
 		if !ok {
 			return nil, webcrypto.NewError(webcrypto.ErrDataError, "keyData must be *webcrypto.JsonWebKey")
 		}
-		return a.importKeyJwk(jwk, algorithm, extractable, keyUsages...)
+		return a.importKeyJwk(jwk, algorithm, extractable, keyUsages)
 	case webcrypto.PKCS8:
 		b, ok := keyData.([]byte)
 		if !ok {
 			return nil, webcrypto.NewError(webcrypto.ErrDataError, "keyData must be []byte")
 		}
-		return a.importKeyPKCS8(b, algorithm, extractable, keyUsages...)
+		return a.importKeyPKCS8(b, algorithm, extractable, keyUsages)
 	default:
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "key format not supported")
 	}
@@ -278,7 +278,7 @@ func (a *oaepSubtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, al
 // Although the specification states that we should first analyse the private key info as we construct our
 // crypto key, the standard go library doesn't support access to the underlying pkcs8 struct so
 // the implementation in this library will take these values from the algorithm provided in the params.
-func (a *oaepSubtleCrypto) importKeyPKCS8(keyData []byte, algorithm *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+func (a *oaepSubtleCrypto) importKeyPKCS8(keyData []byte, algorithm *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (*CryptoKey, error) {
 	if err := util.AreUsagesValid(
 		[]webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.UnwrapKey}, keyUsages); err != nil {
 		return nil, err
@@ -317,7 +317,7 @@ func (a *oaepSubtleCrypto) importKeyPKCS8(keyData []byte, algorithm *webcrypto.A
 
 // importKeyJwk will import a JWK. The method of importing JWK is specified at
 // §22.4 importKey (https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep-operations).
-func (a *oaepSubtleCrypto) importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+func (a *oaepSubtleCrypto) importKeyJwk(keyData *webcrypto.JsonWebKey, algorithm *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (*CryptoKey, error) {
 	// If the "d" field of jwk is present and usages contains an entry which is
 	// not "decrypt" or "unwrapKey", then throw a SyntaxError.
 	if keyData.D != "" {
@@ -478,7 +478,7 @@ func (a *oaepSubtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
 	unwrapAlgorithm *webcrypto.Algorithm,
 	unwrappedKeyAlgorithm *webcrypto.Algorithm,
 	extractable bool,
-	keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+	keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
