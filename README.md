@@ -17,6 +17,8 @@ An implementation of the W3C Web Cryptography API specification (https://www.w3.
 		- [Parameter Definitions](#parameter-definitions)
 		- [Examples](#examples)
 	- [HMAC](#hmac)
+		- [Parameter Definitions](#parameter-definitions-1)
+		- [Examples](#examples-1)
 	- [RSA-OAEP](#rsa-oaep)
 	- [SHA](#sha)
 - [Contributing](#contributing)
@@ -61,7 +63,9 @@ See specific algorithms for the parameter types to be passed in.
 
 ### ECDSA
 
-The **ECDSA** algorithm is the implementation of operations described in [§23](https://www.w3.org/TR/WebCryptoAPI/#ecdsa) of the W3C specification. You can import it into your program with `import "github.com/armortal/webcrypto-go/algorithms/ecdsa"`.
+The **ECDSA** algorithm is the implementation of operations described in [§23](https://www.w3.org/TR/WebCryptoAPI/#ecdsa) of the W3C specification. 
+
+`import "github.com/armortal/webcrypto-go/algorithms/ecdsa"`.
 
 #### Parameter Definitions
 
@@ -176,7 +180,9 @@ func main() {
 
 ### HMAC
 
-The **HMAC** algorithm is the implementation of operations described in [§29](https://www.w3.org/TR/WebCryptoAPI/#hmac) of the W3C specification. You can import it into your program with `import "github.com/armortal/webcrypto-go/algorithms/hmac"`.
+The **HMAC** algorithm is the implementation of operations described in [§29](https://www.w3.org/TR/WebCryptoAPI/#hmac) of the W3C specification. 
+
+`import "github.com/armortal/webcrypto-go/algorithms/hmac"`.
 
 #### Parameter Definitions
 
@@ -192,7 +198,7 @@ As specified in [§29.5](https://www.w3.org/TR/WebCryptoAPI/#hmac-keygen-params)
 | Hash | `string` | The inner hash function to use. See the supported [hash algorithms](#hash-algorithms). |
 | Length | `uint64` | The length (in bits) of the key to generate. If unspecified, the recommended length will be used, which is the size of the associated hash function's block size. |
 
-###### ImportParams
+##### ImportParams
 
 As specified in [§29.3](https://www.w3.org/TR/WebCryptoAPI/#hmac-importparams)
 
