@@ -235,7 +235,7 @@ func (a *oaepSubtleCrypto) generateKeyOaep(algorithm *HashedKeyGenParams, extrac
 	alg := &KeyAlgorithm{
 		name:           rsaOaep,
 		modulusLength:  algorithm.ModulusLength,
-		publicExponent: &algorithm.PublicExponent,
+		publicExponent: algorithm.PublicExponent,
 		HashedKeyAlgorithm: &HashedKeyAlgorithm{
 			Hash: algorithm.Hash,
 		},

@@ -16,7 +16,7 @@ func main() {
 			Params: &rsa.HashedKeyGenParams{
 				KeyGenParams: rsa.KeyGenParams{
 					ModulusLength:  2048,
-					PublicExponent: *big.NewInt(65537),
+					PublicExponent: big.NewInt(65537),
 				},
 				Hash: "SHA-256",
 			},

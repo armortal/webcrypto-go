@@ -44,7 +44,7 @@ type KeyGenParams struct {
 	// The length, in bits, of the RSA modulus
 	ModulusLength uint64
 	// The RSA public exponent
-	PublicExponent big.Int
+	PublicExponent *big.Int
 }
 
 // HashedKeyGenParams is the model of the dictionary specificationn at

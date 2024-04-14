@@ -33,7 +33,7 @@ func TestEncryptDecrypt(t *testing.T) {
 		Params: &HashedKeyGenParams{
 			KeyGenParams: KeyGenParams{
 				ModulusLength:  2048,
-				PublicExponent: *big.NewInt(65537),
+				PublicExponent: big.NewInt(65537),
 			},
 			Hash: "SHA-256",
 		},
@@ -69,7 +69,7 @@ func TestOaep_ExportKey(t *testing.T) {
 		Params: &HashedKeyGenParams{
 			KeyGenParams: KeyGenParams{
 				ModulusLength:  2048,
-				PublicExponent: *big.NewInt(65537),
+				PublicExponent: big.NewInt(65537),
 			},
 			Hash: "SHA-256",
 		},
@@ -164,7 +164,7 @@ func TestOaep_GenerateKey(t *testing.T) {
 			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
 					ModulusLength:  2048,
-					PublicExponent: *big.NewInt(65537),
+					PublicExponent: big.NewInt(65537),
 				},
 				Hash: "SHA-256",
 			},
@@ -219,7 +219,7 @@ func TestOaep_GenerateKey(t *testing.T) {
 			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
 					ModulusLength:  2048,
-					PublicExponent: *big.NewInt(65536),
+					PublicExponent: big.NewInt(65536),
 				},
 				Hash: "SHA-256",
 			},
@@ -235,7 +235,7 @@ func TestOaep_GenerateKey(t *testing.T) {
 			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
 					ModulusLength:  2048,
-					PublicExponent: *big.NewInt(65537),
+					PublicExponent: big.NewInt(65537),
 				},
 				Hash: "SHA-256",
 			},
@@ -251,7 +251,7 @@ func TestOaep_GenerateKey(t *testing.T) {
 			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
 					ModulusLength:  2048,
-					PublicExponent: *big.NewInt(65537),
+					PublicExponent: big.NewInt(65537),
 				},
 				Hash: "SHA-256",
 			},
@@ -269,7 +269,7 @@ func TestOaep_ImportKey(t *testing.T) {
 		Params: &HashedKeyGenParams{
 			KeyGenParams: KeyGenParams{
 				ModulusLength:  2048,
-				PublicExponent: *big.NewInt(65537),
+				PublicExponent: big.NewInt(65537),
 			},
 			Hash: "SHA-256",
 		},
