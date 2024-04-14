@@ -65,7 +65,7 @@ See specific algorithms for the parameter types to be passed in.
 
 The **ECDSA** algorithm is the implementation of operations described in [§23](https://www.w3.org/TR/WebCryptoAPI/#ecdsa) of the W3C specification. 
 
-`import "github.com/armortal/webcrypto-go/algorithms/ecdsa"`.
+`import "github.com/armortal/webcrypto-go/algorithms/ecdsa"`
 
 #### Parameter Definitions
 
@@ -102,6 +102,8 @@ As specified in [§23.6](https://www.w3.org/TR/WebCryptoAPI/#EcKeyImportParams-d
 package main
 
 import (
+	"fmt"
+
 	"github.com/armortal/webcrypto-go"
 	"github.com/armortal/webcrypto-go/algorithms/ecdsa"
 )
@@ -123,7 +125,7 @@ func main() {
 	}
 
 	// key returned is a webcrypto.CryptoKeyPair
-	ckp := key.(webcrypto.CryptoKeyPair)
+	cryptoKey := key.(webcrypto.CryptoKeyPair)
 
 	// sign some data with the private key
 	sig, err := webcrypto.Subtle().Sign(&webcrypto.Algorithm{
@@ -131,7 +133,7 @@ func main() {
 		Params: &ecdsa.Params{
 			Hash: "SHA-256",
 		},
-	}, ckp.PrivateKey(), []byte("test"))
+	}, cryptoKey.PrivateKey(), []byte("test"))
 	if err != nil {
 		panic(err)
 	}
@@ -142,27 +144,48 @@ func main() {
 		Params: &ecdsa.Params{
 			Hash: "SHA-256",
 		},
-	}, ckp.PublicKey(), sig, []byte("test"))
+	}, cryptoKey.PublicKey(), sig, []byte("test"))
 	if err != nil {
 		panic(err)
 	}
 
 	if !ok {
-		// didn't verify - do something
+		panic("signature didn't verify")
 	}
 
 	// export the public/private key as webcrypto.JsonWebKey
-	out, err := webcrypto.Subtle().ExportKey(webcrypto.Jwk, ckp.PrivateKey())
+	out, err := webcrypto.Subtle().ExportKey(webcrypto.Jwk, cryptoKey.PrivateKey())
 	if err != nil {
 		panic(err)
 	}
 
-	jwk := out.(webcrypto.JsonWebKey)
-
 	// do something with jwk
+	jwk := out.(*webcrypto.JsonWebKey)
 
-	// import a public/private key
-	ck, err := webcrypto.Subtle().ImportKey(webcrypto.Jwk, jwk, &webcrypto.Algorithm{
+	// export the key as PKCS8
+	out, err = webcrypto.Subtle().ExportKey(webcrypto.PKCS8, cryptoKey.PrivateKey())
+	if err != nil {
+		panic(err)
+	}
+
+	// do something with the pkcs8 key
+	pkcs8 := out.([]byte)
+
+	// import a public/private key from a jwk
+	in, err := webcrypto.Subtle().ImportKey(webcrypto.Jwk, jwk, &webcrypto.Algorithm{
+		Name: "ECDSA",
+		Params: &ecdsa.KeyImportParams{
+			NamedCurve: "P-256",
+		},
+	}, true, []webcrypto.KeyUsage{
+		webcrypto.Sign,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	// import a public/private key from PKCS8
+	in, err = webcrypto.Subtle().ImportKey(webcrypto.PKCS8, pkcs8, &webcrypto.Algorithm{
 		Name: "ECDSA",
 		Params: &ecdsa.KeyImportParams{
 			NamedCurve: "P-256",
@@ -175,6 +198,7 @@ func main() {
 	}
 
 	// do something with the imported webcrypto.CryptoKey
+	fmt.Println(in.Type())
 }
 ```
 
@@ -182,7 +206,7 @@ func main() {
 
 The **HMAC** algorithm is the implementation of operations described in [§29](https://www.w3.org/TR/WebCryptoAPI/#hmac) of the W3C specification. 
 
-`import "github.com/armortal/webcrypto-go/algorithms/hmac"`.
+`import "github.com/armortal/webcrypto-go/algorithms/hmac"`
 
 #### Parameter Definitions
 

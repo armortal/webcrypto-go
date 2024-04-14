@@ -269,7 +269,7 @@ func (s *subtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algori
 // the implementation in this library will take these values from the algorithm provided in the params.
 func importKeyPKCS8(keyData []byte, params *KeyImportParams, extractable bool, keyUsages []webcrypto.KeyUsage) (*CryptoKey, error) {
 	if err := util.AreUsagesValid(
-		[]webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.UnwrapKey}, keyUsages); err != nil {
+		[]webcrypto.KeyUsage{webcrypto.Sign, webcrypto.Verify}, keyUsages); err != nil {
 		return nil, err
 	}
 

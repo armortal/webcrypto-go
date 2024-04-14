@@ -74,8 +74,8 @@ type KeyAlgorithm struct {
 }
 
 // Hash is the inner hash function to use.
-func (k *KeyAlgorithm) Hash() webcrypto.KeyAlgorithm {
-	return nil
+func (k *KeyAlgorithm) Hash() string {
+	return k.hash
 }
 
 // Length is the length (in bits) of the key.
@@ -174,7 +174,7 @@ func exportKeyAsJsonWebKey(key *CryptoKey) (*webcrypto.JsonWebKey, error) {
 		K:      base64.RawURLEncoding.EncodeToString(key.secret),
 	}
 
-	switch key.algorithm.Hash().Name() {
+	switch key.algorithm.Hash() {
 	case "SHA-1":
 		jwk.Alg = "HS1"
 	case "SHA-256":
