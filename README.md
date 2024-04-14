@@ -3,9 +3,9 @@
 An implementation of the W3C Web Cryptography API specification (https://www.w3.org/TR/WebCryptoAPI/) for Go using Go's standard `crypto` library.
 
 > [!IMPORTANT]  
-> Whilst we try to ensure that we don't commit breaking changes until we release our first stable version, there
+> Whilst we try to ensure that we don't commit breaking changes until we release our first major version, there
 > may be times where decisions made during early development no longer make sense and therefore require
-> breaking changes. Please be mindful of this when updating your version of this library until we hit v1.0.0.
+> breaking changes. Please be mindful of this when updating your version of this library until we hit `v1.0.0`.
 
 ## Contents
 

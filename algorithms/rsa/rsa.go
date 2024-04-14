@@ -1,4 +1,4 @@
-// Copyright 2023 ARMORTAL TECHNOLOGIES PTY LTD
+// Copyright 2023-2024 ARMORTAL TECHNOLOGIES PTY LTD
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.package rsa
 
-// Package rsa implements RSA operations as specified in the algorithm overview
-// §19 https://www.w3.org/TR/WebCryptoAPI/#algorithm-overview
+// Package rsa implements RSA operations;
+// RSA-OAEP as specified in §30 (https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep).
 package rsa
 
 import (

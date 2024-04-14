@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package webcrypto implements the WebCrypto API specification (https://www.w3.org/TR/WebCryptoAPI/).
 package webcrypto
 
 // SubtleCrypto interface provides a set of methods for dealing with low-level cryptographic primitives and
