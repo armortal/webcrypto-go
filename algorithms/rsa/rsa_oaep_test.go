@@ -1,4 +1,4 @@
-// Copyright 2023 ARMORTAL TECHNOLOGIES PTY LTD
+// Copyright 2023-2024 ARMORTAL TECHNOLOGIES PTY LTD
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -10,8 +10,10 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
-// limitations under the License
+// limitations under the License.package rsa
 
+// Package rsa implements RSA operations;
+// RSA-OAEP as specified in §30 (https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep).
 package rsa
 
 import (
@@ -26,32 +28,33 @@ import (
 )
 
 func TestEncryptDecrypt(t *testing.T) {
-	subtle := &SubtleCrypto{}
-	key, err := subtle.GenerateKey(&Algorithm{
+	key, err := oaepSubtle.GenerateKey(&webcrypto.Algorithm{
 		Name: "RSA-OAEP",
-		HashedKeyGenParams: &HashedKeyGenParams{
+		Params: &HashedKeyGenParams{
 			KeyGenParams: KeyGenParams{
 				ModulusLength:  2048,
 				PublicExponent: *big.NewInt(65537),
 			},
 			Hash: "SHA-256",
 		},
-	}, true, webcrypto.Decrypt, webcrypto.Encrypt)
+	}, true, []webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.Encrypt})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	msg := []byte("helloworld")
-	b, err := subtle.Encrypt(&Algorithm{
-		Name: "RSA-OAEP",
-	}, key.(*CryptoKeyPair).PublicKey(), msg)
+	b, err := oaepSubtle.Encrypt(&webcrypto.Algorithm{
+		Name:   "RSA-OAEP",
+		Params: &OaepParams{},
+	}, key.(webcrypto.CryptoKeyPair).PublicKey(), msg)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	v, err := subtle.Decrypt(&Algorithm{
-		Name: "RSA-OAEP",
-	}, key.(*CryptoKeyPair).PrivateKey(), b)
+	v, err := oaepSubtle.Decrypt(&webcrypto.Algorithm{
+		Name:   "RSA-OAEP",
+		Params: &OaepParams{},
+	}, key.(webcrypto.CryptoKeyPair).PrivateKey(), b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,24 +64,23 @@ func TestEncryptDecrypt(t *testing.T) {
 }
 
 func TestOaep_ExportKey(t *testing.T) {
-	subtle := &SubtleCrypto{}
-	key, err := subtle.GenerateKey(&Algorithm{
+	key, err := oaepSubtle.GenerateKey(&webcrypto.Algorithm{
 		Name: "RSA-OAEP",
-		HashedKeyGenParams: &HashedKeyGenParams{
+		Params: &HashedKeyGenParams{
 			KeyGenParams: KeyGenParams{
 				ModulusLength:  2048,
 				PublicExponent: *big.NewInt(65537),
 			},
 			Hash: "SHA-256",
 		},
-	}, true, webcrypto.Decrypt, webcrypto.Encrypt)
+	}, true, []webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.Encrypt})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("export jwk", func(t *testing.T) {
 		pk := key.(webcrypto.CryptoKeyPair).PrivateKey()
-		out, err := subtle.ExportKey(webcrypto.Jwk, pk)
+		out, err := oaepSubtle.ExportKey(webcrypto.Jwk, pk)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -136,7 +138,7 @@ func TestOaep_ExportKey(t *testing.T) {
 	})
 
 	t.Run("export PKCS8", func(t *testing.T) {
-		out, err := subtle.ExportKey(webcrypto.PKCS8, key.(*CryptoKeyPair).PrivateKey())
+		out, err := oaepSubtle.ExportKey(webcrypto.PKCS8, key.(webcrypto.CryptoKeyPair).PrivateKey())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -156,19 +158,17 @@ func TestOaep_ExportKey(t *testing.T) {
 }
 
 func TestOaep_GenerateKey(t *testing.T) {
-	subtle := &SubtleCrypto{}
-
 	t.Run("generate successful key pair", func(t *testing.T) {
-		key, err := subtle.GenerateKey(&Algorithm{
+		key, err := oaepSubtle.GenerateKey(&webcrypto.Algorithm{
 			Name: "RSA-OAEP",
-			HashedKeyGenParams: &HashedKeyGenParams{
+			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
 					ModulusLength:  2048,
 					PublicExponent: *big.NewInt(65537),
 				},
 				Hash: "SHA-256",
 			},
-		}, true, webcrypto.Decrypt, webcrypto.Encrypt)
+		}, true, []webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.Encrypt})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -214,48 +214,48 @@ func TestOaep_GenerateKey(t *testing.T) {
 	})
 
 	t.Run("invalid exponent", func(t *testing.T) {
-		_, err := subtle.GenerateKey(&Algorithm{
+		_, err := oaepSubtle.GenerateKey(&webcrypto.Algorithm{
 			Name: "RSA-OAEP",
-			HashedKeyGenParams: &HashedKeyGenParams{
+			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
 					ModulusLength:  2048,
 					PublicExponent: *big.NewInt(65536),
 				},
 				Hash: "SHA-256",
 			},
-		}, true)
+		}, true, nil)
 		if err == nil {
 			t.Fatal("error should have been returned")
 		}
 	})
 
 	t.Run("invalid usages", func(t *testing.T) {
-		_, err := subtle.GenerateKey(&Algorithm{
+		_, err := oaepSubtle.GenerateKey(&webcrypto.Algorithm{
 			Name: "RSA-OAEP",
-			HashedKeyGenParams: &HashedKeyGenParams{
+			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
 					ModulusLength:  2048,
 					PublicExponent: *big.NewInt(65537),
 				},
 				Hash: "SHA-256",
 			},
-		}, true)
+		}, true, nil)
 		if err == nil {
 			t.Fatal("error should have been returned")
 		}
 	})
 
 	t.Run("invalid algorithm name", func(t *testing.T) {
-		_, err := subtle.GenerateKey(&Algorithm{
+		_, err := oaepSubtle.GenerateKey(&webcrypto.Algorithm{
 			Name: "RSA-OAEP-invalid-name",
-			HashedKeyGenParams: &HashedKeyGenParams{
+			Params: &HashedKeyGenParams{
 				KeyGenParams: KeyGenParams{
 					ModulusLength:  2048,
 					PublicExponent: *big.NewInt(65537),
 				},
 				Hash: "SHA-256",
 			},
-		}, true)
+		}, true, nil)
 		if err == nil {
 			t.Fatal("error should have been returned")
 		}
@@ -264,38 +264,37 @@ func TestOaep_GenerateKey(t *testing.T) {
 }
 
 func TestOaep_ImportKey(t *testing.T) {
-	subtle := &SubtleCrypto{}
-	key, err := subtle.GenerateKey(&Algorithm{
+	key, err := oaepSubtle.GenerateKey(&webcrypto.Algorithm{
 		Name: "RSA-OAEP",
-		HashedKeyGenParams: &HashedKeyGenParams{
+		Params: &HashedKeyGenParams{
 			KeyGenParams: KeyGenParams{
 				ModulusLength:  2048,
 				PublicExponent: *big.NewInt(65537),
 			},
 			Hash: "SHA-256",
 		},
-	}, true, webcrypto.Decrypt, webcrypto.Encrypt)
+	}, true, []webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.Encrypt})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	data, err := subtle.ExportKey(webcrypto.Jwk, key.(webcrypto.CryptoKeyPair).PrivateKey())
+	data, err := oaepSubtle.ExportKey(webcrypto.Jwk, key.(webcrypto.CryptoKeyPair).PrivateKey())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("import jwk", func(t *testing.T) {
-		in, err := subtle.ImportKey(webcrypto.Jwk, data, &Algorithm{
+		in, err := oaepSubtle.ImportKey(webcrypto.Jwk, data, &webcrypto.Algorithm{
 			Name: "RSA-OAEP",
-			HashedImportParams: &HashedImportParams{
+			Params: &HashedImportParams{
 				Hash: "SHA-256",
 			},
-		}, true, webcrypto.Decrypt)
+		}, true, []webcrypto.KeyUsage{webcrypto.Decrypt})
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if in.Algorithm().GetName() != "RSA-OAEP" {
+		if in.Algorithm().Name() != "RSA-OAEP" {
 			t.Fatal()
 		}
 

@@ -81,3 +81,9 @@ func GetHash(hash string) (hash.Hash, error) {
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, fmt.Sprintf("unknown hash identifier '%s'", hash))
 	}
 }
+
+func NotNilOrPanic(name string, v any) {
+	if v == nil {
+		panic(fmt.Sprintf("%s cannot be nil", name))
+	}
+}

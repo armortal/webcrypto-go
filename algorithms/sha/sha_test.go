@@ -1,4 +1,4 @@
-// Copyright 2023 ARMORTAL TECHNOLOGIES PTY LTD
+// Copyright 2023-2024 ARMORTAL TECHNOLOGIES PTY LTD
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package sha implements the SHA operations as specified in
+// §30 (https://www.w3.org/TR/WebCryptoAPI/#sha)
 package sha
 
 import (
 	"fmt"
 	"testing"
+
+	"github.com/armortal/webcrypto-go"
 )
 
 func TestSHA1(t *testing.T) {
@@ -61,7 +65,7 @@ func TestSHA512(t *testing.T) {
 }
 
 func digestMismatch(t *testing.T, input string, subtle *subtleCrypto, output string) {
-	act, err := subtle.Digest(&Algorithm{Name: subtle.name}, []byte(input))
+	act, err := subtle.Digest(&webcrypto.Algorithm{Name: subtle.name}, []byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +75,7 @@ func digestMismatch(t *testing.T, input string, subtle *subtleCrypto, output str
 }
 
 func digest(t *testing.T, input string, subtle *subtleCrypto, exp string) {
-	act, err := subtle.Digest(&Algorithm{Name: subtle.name}, []byte(input))
+	act, err := subtle.Digest(&webcrypto.Algorithm{Name: subtle.name}, []byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}

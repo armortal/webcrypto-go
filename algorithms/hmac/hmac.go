@@ -1,4 +1,4 @@
-// Copyright 2023 ARMORTAL TECHNOLOGIES PTY LTD
+// Copyright 2023-2024 ARMORTAL TECHNOLOGIES PTY LTD
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package hmac implements HMAC operations as described in the specifications at
+// §29 (https://www.w3.org/TR/WebCryptoAPI/#hmac).
 package hmac
 
 import (
@@ -33,14 +35,57 @@ var usages = []webcrypto.KeyUsage{
 	webcrypto.Verify,
 }
 
+var subtle *subtleCrypto
+
 func init() {
-	webcrypto.RegisterAlgorithm("HMAC", func() webcrypto.SubtleCrypto { return &SubtleCrypto{} })
+	subtle = &subtleCrypto{}
+	webcrypto.RegisterAlgorithm("HMAC", subtle)
 }
 
-type SubtleCrypto struct {
-	webcrypto.SubtleCrypto
-	Hash   webcrypto.Algorithm
-	Length int
+// subtleCrypto implements webcrypto.SubtleCrypto interface. To access this, use the
+// webcrypto.Subtle() method.
+type subtleCrypto struct{}
+
+// KeyGenParams represents the dictionary specification of
+// §29.5 (https://www.w3.org/TR/WebCryptoAPI/#dfn-HmacKeyGenParams)
+type KeyGenParams struct {
+	// The inner hash function to use.
+	Hash string
+	// The length (in bits) of the key to generate. If unspecified, the
+	// recommended length will be used, which is the size of the associated hash function's block
+	// size.
+	Length uint64
+}
+
+// ImportParams represents the dictionary specification of
+// §29.3 (https://www.w3.org/TR/WebCryptoAPI/#dfn-HmacImportParams)
+type ImportParams struct {
+	// The inner hash function to use.
+	Hash string
+	// The length (in bits) of the key.
+	Length uint64
+}
+
+// KeyAlgorithm represents the dictionary specification of
+// §29.4 (https://www.w3.org/TR/WebCryptoAPI/#HmacKeyAlgorithm-dictionary)
+type KeyAlgorithm struct {
+	hash   string
+	length uint64
+}
+
+// Hash is the inner hash function to use.
+func (k *KeyAlgorithm) Hash() string {
+	return k.hash
+}
+
+// Length is the length (in bits) of the key.
+func (k *KeyAlgorithm) Length() uint64 {
+	return k.length
+}
+
+// Name is the algorithm name.
+func (k *KeyAlgorithm) Name() string {
+	return "HMAC"
 }
 
 type CryptoKey struct {
@@ -48,35 +93,6 @@ type CryptoKey struct {
 	algorithm   *KeyAlgorithm
 	usages      []webcrypto.KeyUsage
 	secret      []byte
-}
-
-type Algorithm struct {
-	Name         string
-	KeyGenParams *KeyGenParams
-	ImportParams *ImportParams
-}
-
-func (a *Algorithm) GetName() string {
-	return a.Name
-}
-
-type KeyGenParams struct {
-	Hash   string
-	Length uint64
-}
-
-type ImportParams struct {
-	Hash   string
-	Length uint64
-}
-
-type KeyAlgorithm struct {
-	Hash   string
-	Length uint64
-}
-
-func (k *KeyAlgorithm) GetName() string {
-	return "HMAC"
 }
 
 func (c *CryptoKey) Type() webcrypto.KeyType {
@@ -95,31 +111,36 @@ func (c *CryptoKey) Usages() []webcrypto.KeyUsage {
 	return c.usages
 }
 
-func (a *SubtleCrypto) Name() string {
+func (a *CryptoKey) Name() string {
 	return "HMAC"
 }
 
-func (a *SubtleCrypto) Decrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
+// Decrypt is not supported.
+func (a *subtleCrypto) Decrypt(algorithm *webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) DeriveBits(algorithm webcrypto.Algorithm, baseKey webcrypto.CryptoKey, length uint64) ([]byte, error) {
+// DeriveBits is not supported.
+func (a *subtleCrypto) DeriveBits(algorithm *webcrypto.Algorithm, baseKey webcrypto.CryptoKey, length uint64) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) DeriveKey(algorithm webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+// DeriveKey is not supported.
+func (a *subtleCrypto) DeriveKey(algorithm *webcrypto.Algorithm, baseKey webcrypto.CryptoKey, derivedKeyType *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) Digest(algorithm webcrypto.Algorithm, data []byte) ([]byte, error) {
+// Digest is not supported.
+func (a *subtleCrypto) Digest(algorithm *webcrypto.Algorithm, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) Encrypt(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
+// Encrypt is not supported.
+func (a *subtleCrypto) Encrypt(algorithm *webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) ExportKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey) (any, error) {
+func (a *subtleCrypto) ExportKey(format webcrypto.KeyFormat, key webcrypto.CryptoKey) (any, error) {
 	if !key.Extractable() {
 		return nil, webcrypto.NewError(webcrypto.ErrOperationError, "key provided is not extractable")
 	}
@@ -153,7 +174,7 @@ func exportKeyAsJsonWebKey(key *CryptoKey) (*webcrypto.JsonWebKey, error) {
 		K:      base64.RawURLEncoding.EncodeToString(key.secret),
 	}
 
-	switch key.algorithm.Hash {
+	switch key.algorithm.Hash() {
 	case "SHA-1":
 		jwk.Alg = "HS1"
 	case "SHA-256":
@@ -169,20 +190,17 @@ func exportKeyAsJsonWebKey(key *CryptoKey) (*webcrypto.JsonWebKey, error) {
 	return jwk, nil
 }
 
-func (a *SubtleCrypto) GenerateKey(algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (any, error) {
-	alg, ok := algorithm.(*Algorithm)
+func (a *subtleCrypto) GenerateKey(algorithm *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (any, error) {
+	params, ok := algorithm.Params.(*KeyGenParams)
 	if !ok {
-		return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm must be *hmac.Algorithm")
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "params must be *hmac.KeyGenParams")
 	}
-	if alg.KeyGenParams == nil {
-		return nil, webcrypto.NewError(webcrypto.ErrDataError, "*KeyGenParams must be provided")
-	}
-	return generateKey(alg, extractable, keyUsages...)
+	return generateKey(params, extractable, keyUsages)
 }
 
-func generateKey(algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+func generateKey(params *KeyGenParams, extractable bool, keyUsages []webcrypto.KeyUsage) (*CryptoKey, error) {
 	var blockSize int
-	switch algorithm.KeyGenParams.Hash {
+	switch params.Hash {
 	case "SHA-1":
 		blockSize = sha1.BlockSize * 8
 	case "SHA-256":
@@ -193,15 +211,15 @@ func generateKey(algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, "hash algorithm not supported")
 	}
 
-	if algorithm.KeyGenParams.Length != 0 {
-		if algorithm.KeyGenParams.Length < uint64(blockSize) {
+	if params.Length != 0 {
+		if params.Length < uint64(blockSize) {
 			return nil, errors.New("length must be above or equal to hash block size")
 		}
-		if algorithm.KeyGenParams.Length%8 != 0 {
+		if params.Length%8 != 0 {
 			return nil, errors.New("length must be multiples of 8")
 		}
 	} else {
-		algorithm.KeyGenParams.Length = uint64(blockSize)
+		params.Length = uint64(blockSize)
 	}
 
 	// check the key usages
@@ -212,15 +230,15 @@ func generateKey(algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.
 		return nil, err
 	}
 
-	b := make([]byte, algorithm.KeyGenParams.Length/8)
+	b := make([]byte, params.Length/8)
 	if err := webcrypto.GetRandomValues(b); err != nil {
 		return nil, err
 	}
 
 	return &CryptoKey{
 		algorithm: &KeyAlgorithm{
-			Hash:   algorithm.KeyGenParams.Hash,
-			Length: algorithm.KeyGenParams.Length,
+			hash:   params.Hash,
+			length: params.Length,
 		},
 		extractable: extractable,
 		usages:      keyUsages,
@@ -228,31 +246,31 @@ func generateKey(algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.
 	}, nil
 }
 
-func (a *SubtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm webcrypto.Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
-	alg, ok := algorithm.(*Algorithm)
+func (a *subtleCrypto) ImportKey(format webcrypto.KeyFormat, keyData any, algorithm *webcrypto.Algorithm, extractable bool, keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+	params, ok := algorithm.Params.(*ImportParams)
 	if !ok {
-		return nil, webcrypto.NewError(webcrypto.ErrDataError, "algorithm must be *hmac.Algorithm")
+		return nil, webcrypto.NewError(webcrypto.ErrDataError, "Params must be *hmac.ImportParams")
 	}
 	if err := util.AreUsagesValid(usages, keyUsages); err != nil {
 		return nil, err
 	}
 	switch format {
 	case webcrypto.Jwk:
-		return importKeyFromJsonWebKey(keyData.(*webcrypto.JsonWebKey), alg, extractable, keyUsages...)
+		return importKeyFromJsonWebKey(keyData.(*webcrypto.JsonWebKey), params, extractable, keyUsages)
 	case webcrypto.Raw:
-		return importKeyFromRaw(keyData.([]byte), alg, extractable, keyUsages...)
+		return importKeyFromRaw(keyData.([]byte), params, extractable, keyUsages)
 	default:
 		return nil, webcrypto.NewError(webcrypto.ErrNotSupportedError, fmt.Sprintf("format %s not supported", format))
 	}
 }
 
-func importKeyFromJsonWebKey(keyData *webcrypto.JsonWebKey, algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+func importKeyFromJsonWebKey(keyData *webcrypto.JsonWebKey, params *ImportParams, extractable bool, keyUsages []webcrypto.KeyUsage) (*CryptoKey, error) {
 	if keyData.Kty != "oct" {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "kty is not 'oct'")
 	}
 
 	var hashLength int
-	switch algorithm.ImportParams.Hash {
+	switch params.Hash {
 	case "SHA-1":
 		if keyData.Alg != "HS1" {
 			return nil, webcrypto.NewError(webcrypto.ErrDataError, "invalid alg value")
@@ -298,11 +316,11 @@ func importKeyFromJsonWebKey(keyData *webcrypto.JsonWebKey, algorithm *Algorithm
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "k length cannot be less than hash length")
 	}
 
-	if algorithm.ImportParams.Length != uint64(length) {
+	if params.Length != uint64(length) {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "length provided does not match key length")
 	}
 
-	algorithm.ImportParams.Length = uint64(length)
+	params.Length = uint64(length)
 
 	if keyData.Ext != extractable {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "ext in key does not match value provided")
@@ -320,8 +338,8 @@ loop:
 
 	return &CryptoKey{
 		algorithm: &KeyAlgorithm{
-			Hash:   algorithm.ImportParams.Hash,
-			Length: algorithm.ImportParams.Length,
+			hash:   params.Hash,
+			length: params.Length,
 		},
 		extractable: extractable,
 		usages:      keyUsages,
@@ -329,18 +347,18 @@ loop:
 	}, nil
 }
 
-func importKeyFromRaw(keyData []byte, algorithm *Algorithm, extractable bool, keyUsages ...webcrypto.KeyUsage) (*CryptoKey, error) {
+func importKeyFromRaw(keyData []byte, params *ImportParams, extractable bool, keyUsages []webcrypto.KeyUsage) (*CryptoKey, error) {
 	length := len(keyData) * 8
 	if length == 0 {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "length must not be 0")
 	}
 
-	algorithm.ImportParams.Length = uint64(length)
+	params.Length = uint64(length)
 
 	return &CryptoKey{
 		algorithm: &KeyAlgorithm{
-			Hash:   algorithm.ImportParams.Hash,
-			Length: algorithm.ImportParams.Length,
+			hash:   params.Hash,
+			length: params.Length,
 		},
 		extractable: extractable,
 		secret:      keyData,
@@ -348,18 +366,17 @@ func importKeyFromRaw(keyData []byte, algorithm *Algorithm, extractable bool, ke
 	}, nil
 }
 
-func (a *SubtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
-	if _, ok := algorithm.(*Algorithm); !ok {
-		return nil, errors.New("webcrypto: algorithm must be *hmac.Algorithm")
-	}
-
+func (a *subtleCrypto) Sign(algorithm *webcrypto.Algorithm, key webcrypto.CryptoKey, data []byte) ([]byte, error) {
+	// if _, ok := algorithm.(*Algorithm); !ok {
+	// 	return nil, errors.New("webcrypto: algorithm must be *hmac.Algorithm")
+	// }
 	k, ok := key.(*CryptoKey)
 	if !ok {
 		return nil, errors.New("key must be *hmac.CryptoKey")
 	}
 
 	var hash func() hash.Hash
-	switch k.algorithm.Hash {
+	switch k.algorithm.hash {
 	case "SHA-1":
 		hash = sha1.New
 	case "SHA-256":
@@ -377,17 +394,18 @@ func (a *SubtleCrypto) Sign(algorithm webcrypto.Algorithm, key webcrypto.CryptoK
 	return h.Sum(nil), nil
 }
 
-func (a *SubtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
+// UnwrapKey is not supported.
+func (a *subtleCrypto) UnwrapKey(format webcrypto.KeyFormat,
 	wrappedKey []byte,
 	unwrappingKey webcrypto.CryptoKey,
-	unwrapAlgorithm webcrypto.Algorithm,
-	unwrappedKeyAlgorithm webcrypto.Algorithm,
+	unwrapAlgorithm *webcrypto.Algorithm,
+	unwrappedKeyAlgorithm *webcrypto.Algorithm,
 	extractable bool,
-	keyUsages ...webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
+	keyUsages []webcrypto.KeyUsage) (webcrypto.CryptoKey, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }
 
-func (a *SubtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
+func (a *subtleCrypto) Verify(algorithm *webcrypto.Algorithm, key webcrypto.CryptoKey, signature []byte, data []byte) (bool, error) {
 	act, err := a.Sign(algorithm, key, data)
 	if err != nil {
 		return false, err
@@ -395,9 +413,10 @@ func (a *SubtleCrypto) Verify(algorithm webcrypto.Algorithm, key webcrypto.Crypt
 	return hmac.Equal(signature, act), nil
 }
 
-func (a *SubtleCrypto) WrapKey(format webcrypto.KeyFormat,
+// WrapKey is not supported.
+func (a *subtleCrypto) WrapKey(format webcrypto.KeyFormat,
 	key webcrypto.CryptoKey,
 	wrappingKey webcrypto.CryptoKey,
-	wrapAlgorithm webcrypto.Algorithm) (any, error) {
+	wrapAlgorithm *webcrypto.Algorithm) (any, error) {
 	return nil, webcrypto.ErrMethodNotSupported()
 }

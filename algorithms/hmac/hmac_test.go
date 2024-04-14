@@ -1,4 +1,4 @@
-// Copyright 2023 ARMORTAL TECHNOLOGIES PTY LTD
+// Copyright 2023-2024 ARMORTAL TECHNOLOGIES PTY LTD
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package hmac implements HMAC operations as described in the specifications at
+// §29 (https://www.w3.org/TR/WebCryptoAPI/#hmac).
 package hmac
 
 import (
@@ -30,18 +32,17 @@ const (
 )
 
 func TestGenerateKey(t *testing.T) {
-	subtle := &SubtleCrypto{}
-
 	usages := []webcrypto.KeyUsage{
 		webcrypto.Sign, webcrypto.Verify,
 	}
 
-	res, err := subtle.GenerateKey(&Algorithm{
-		KeyGenParams: &KeyGenParams{
+	res, err := subtle.GenerateKey(&webcrypto.Algorithm{
+		Name: "HMAC",
+		Params: &KeyGenParams{
 			Hash:   "SHA-256",
 			Length: 512,
 		},
-	}, true, usages...)
+	}, true, usages)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +61,7 @@ func TestGenerateKey(t *testing.T) {
 		t.Fatal("usages mismatch")
 	}
 
-	if key.Algorithm().GetName() != "HMAC" {
+	if key.Algorithm().Name() != "HMAC" {
 		t.Fatal("algorithm name mismatch")
 	}
 
@@ -71,16 +72,16 @@ func TestGenerateKey(t *testing.T) {
 }
 
 func TestExportKey(t *testing.T) {
-	subtle := &SubtleCrypto{}
 	raw, err := hex.DecodeString(rawHexKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	key, err := subtle.ImportKey(webcrypto.Raw, raw, &Algorithm{
-		ImportParams: &ImportParams{
+	key, err := subtle.ImportKey(webcrypto.Raw, raw, &webcrypto.Algorithm{
+		Name: "HMAC",
+		Params: &ImportParams{
 			Hash: "SHA-256",
 		},
-	}, true, usages...)
+	}, true, usages)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,18 +97,17 @@ func TestExportKey(t *testing.T) {
 }
 
 func TestImportKey(t *testing.T) {
-	subtle := &SubtleCrypto{}
-
 	raw, err := hex.DecodeString(rawHexKey)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	key, err := subtle.ImportKey(webcrypto.Raw, raw, &Algorithm{
-		ImportParams: &ImportParams{
+	key, err := subtle.ImportKey(webcrypto.Raw, raw, &webcrypto.Algorithm{
+		Name: "HMAC",
+		Params: &ImportParams{
 			Hash: "SHA-256",
 		},
-	}, true, usages...)
+	}, true, usages)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,29 +124,30 @@ func TestImportKey(t *testing.T) {
 		t.Fatal("usages mismatch")
 	}
 
-	if key.Algorithm().GetName() != "HMAC" {
+	if key.Algorithm().Name() != "HMAC" {
 		t.Fatal("algorithm name mismatch")
 	}
 
 }
 
 func TestSign(t *testing.T) {
-	subtle := &SubtleCrypto{}
-
 	raw, err := hex.DecodeString(rawHexKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	key, err := subtle.ImportKey(webcrypto.Raw, raw, &Algorithm{
-		ImportParams: &ImportParams{
+	key, err := subtle.ImportKey(webcrypto.Raw, raw, &webcrypto.Algorithm{
+		Name: "HMAC",
+		Params: &ImportParams{
 			Hash: "SHA-256",
 		},
-	}, true, usages...)
+	}, true, usages)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	sig, err := subtle.Sign(&Algorithm{}, key, []byte(input))
+	sig, err := subtle.Sign(&webcrypto.Algorithm{
+		Name: "HMAC",
+	}, key, []byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,16 +159,16 @@ func TestSign(t *testing.T) {
 }
 
 func TestVerify(t *testing.T) {
-	subtle := &SubtleCrypto{}
 	raw, err := hex.DecodeString(rawHexKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	key, err := subtle.ImportKey(webcrypto.Raw, raw, &Algorithm{
-		ImportParams: &ImportParams{
+	key, err := subtle.ImportKey(webcrypto.Raw, raw, &webcrypto.Algorithm{
+		Name: "HMAC",
+		Params: &ImportParams{
 			Hash: "SHA-256",
 		},
-	}, true, usages...)
+	}, true, usages)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +176,9 @@ func TestVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ok, err := subtle.Verify(&Algorithm{}, key, sig, []byte(input))
+	ok, err := subtle.Verify(&webcrypto.Algorithm{
+		Name: "HMAC",
+	}, key, sig, []byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}
