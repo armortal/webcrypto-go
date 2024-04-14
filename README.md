@@ -20,11 +20,14 @@ An implementation of the W3C Web Cryptography API specification (https://www.w3.
 		- [Parameter Definitions](#parameter-definitions-1)
 		- [Examples](#examples-1)
 	- [RSA-OAEP](#rsa-oaep)
-	- [RSASSA-PKCS1-v1_5]()
+		- [Parameter Definitions](#parameter-definitions-2)
+		- [Examples](#examples-2)
+	- [RSASSA-PKCS1-v1_5](#rsassa-pkcs1-v1_5)
+		- [Parameter Definitions](#parameter-definitions-3)
 	- [SHA](#sha)
+		- [Parameter Definitions](#parameter-definitions-4)
+		- [Examples](#examples-3)
 - [Contributing](#contributing)
-- [Appendix](#appendix)
-	- [Hash Algorithms](#hash-algorithms)
 
 ## Background
 
@@ -79,7 +82,7 @@ As specified in [§23.3](https://www.w3.org/TR/WebCryptoAPI/#EcdsaParams-diction
 
 | Field | Type | Description |
 | :---- | :--- | :---------- |
-| Hash | `string` | The hash algorithm to use. See the supported [hash algorithms](#hash-algorithms) |
+| Hash | `string` | The hash algorithm to use. See the supported [hash algorithms](#parameter-definitions-4) |
 
 ##### KeyGenParams
 
@@ -220,7 +223,7 @@ As specified in [§29.5](https://www.w3.org/TR/WebCryptoAPI/#hmac-keygen-params)
 
 | Field | Type | Description |
 | :---- | :--- | :---------- |
-| Hash | `string` | The inner hash function to use. See the supported [hash algorithms](#hash-algorithms). |
+| Hash | `string` | The inner hash function to use. See the supported [hash algorithms](#parameter-definitions-4). |
 | Length | `uint64` | The length (in bits) of the key to generate. If unspecified, the recommended length will be used, which is the size of the associated hash function's block size. |
 
 ##### ImportParams
@@ -229,7 +232,7 @@ As specified in [§29.3](https://www.w3.org/TR/WebCryptoAPI/#hmac-importparams)
 
 | Field | Type | Description |
 | :---- | :--- | :---------- |
-| Hash | `string` | The inner hash function to use. See the supported [hash algorithms](#hash-algorithms). |
+| Hash | `string` | The inner hash function to use. See the supported [hash algorithms](#parameter-definitions-4). |
 | Length | `uint64` | The length (in bits) of the key. |
 
 #### Examples
@@ -472,7 +475,7 @@ As specified in [§20.4](https://www.w3.org/TR/WebCryptoAPI/#RsaHashedKeyGenPara
 
 | Field | Type | Description |
 | :---- | :--- | :---------- |
-| Hash | `string` | The [hash algorithm](#hash-algorithms) to use. |
+| Hash | `string` | The [hash algorithm](#parameter-definitions-4) to use. |
 | ModulusLength | `uint64` | The length, in bits, of the RSA modulus. |
 | PublicExponent | `*big.Int` | The RSA public exponent. |
 
@@ -482,48 +485,67 @@ As specified in [§20.7](https://www.w3.org/TR/WebCryptoAPI/#RsaHashedImportPara
 
 | Field | Type | Description |
 | :---- | :--- | :---------- |
-| Hash | `string` | The [hash algorithm](#hash-algorithms) to use. |
+| Hash | `string` | The [hash algorithm](#parameter-definitions-4) to use. |
 
 
-## SHA
+### SHA
 
 The **SHA** algorithm is the implementation of operations described in [§30](https://www.w3.org/TR/WebCryptoAPI/#sha) of the W3C specification.
 
-The implementation in this library uses Go's `io.Reader` as the input to the `digest` method.
+`import "github.com/armortal/webcrypto-go/algorithms/sha"`
+
+#### Parameter Definitions
+
+Below are the recognized algorithm names for supported SHA operations according to 
+[§30.2](https://www.w3.org/TR/WebCryptoAPI/#sha-registration).
+
+- `SHA-1`
+- `SHA-256`
+- `SHA-384`
+- `SHA-512`
+
+##### Params
+
+This is an empty struct that we use to register SHA algorithms without using a blank import. If you don't
+use this as in `webcrypto.Algorithm.Params` to the `Digest()` call, you can import the algorithm using
+a blank import like below:
+
+`import _ "github.com/armortal/webcrypto-go/algorithms/sha"`
+
+#### Examples
+
+Below are the parameters that supported SHA operations will take according to 
+[§30.2](https://www.w3.org/TR/WebCryptoAPI/#sha-registration).
 
 ```go
 package main
 
 import (
+	"encoding/hex"
+	"fmt"
+
 	"github.com/armortal/webcrypto-go"
 	"github.com/armortal/webcrypto-go/algorithms/sha"
 )
 
 func main() {
-	// digest
+	// digest something
 	hash, err := webcrypto.Subtle().Digest(
-		&sha.Algorithm{
-			Name: "SHA-256",
-		}, bytes.NewReader([]byte("helloworld")))
+		&webcrypto.Algorithm{
+			Name:   "SHA-256",
+			Params: &sha.Params{}, // we use *sha.Params so we can register the algorithm without using a blank import
+		}, []byte("test"))
 
 	if err != nil {
 		panic(err)
 	}
 
 	// do something with hash
+	fmt.Println(hex.EncodeToString(hash))
 }
+
 ```
 
 ## Contributing
 
 If you have found a bug or would like to see new features, please create a new issue in this repository. If there is an issue that poses a security risk, please refrain from posting the issue publicly and contact [support@armortal.com](mailto://support@armortal.com) instead.
-
-## Apendix
-
-### Hash Algorithms
-
-Unless otherwise specified by a particular algorithm, the supported hash algorithms are 
-- `SHA-1`
-- `SHA-256`
-- `SHA-384`
-- `SHA-512`

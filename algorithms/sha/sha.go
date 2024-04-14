@@ -35,6 +35,10 @@ func init() {
 	webcrypto.RegisterAlgorithm(sha_512, &subtleCrypto{name: sha_512})
 }
 
+// Params is an empty struct with no values. This is solely created
+// so we can import SHA algorithms without using a blank import for registration.
+type Params struct{}
+
 type subtleCrypto struct {
 	// name is the hasher that this crypto implementation uses e.g. SHA-1, SHA-256 etc.
 	name string
