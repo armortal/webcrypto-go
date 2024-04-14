@@ -504,6 +504,8 @@ Below are the recognized algorithm names for supported SHA operations according 
 - `SHA-384`
 - `SHA-512`
 
+There are no parameter definitions, however we use [Params](#params-1) below for importing purposes.
+
 ##### Params
 
 This is an empty struct that we use to register SHA algorithms without using a blank import. If you don't
@@ -513,9 +515,6 @@ a blank import like below:
 `import _ "github.com/armortal/webcrypto-go/algorithms/sha"`
 
 #### Examples
-
-Below are the parameters that supported SHA operations will take according to 
-[§30.2](https://www.w3.org/TR/WebCryptoAPI/#sha-registration).
 
 ```go
 package main
