@@ -23,8 +23,8 @@ func main() {
 		panic(err)
 	}
 
-	// key returned is a webcrypto.CryptoKeyPair
-	cryptoKey := key.(webcrypto.CryptoKeyPair)
+	// key returned is a webcrypto.CryptoKeyPair that contains two *ecdsa.CryptoKey
+	cryptoKeyPair := key.(webcrypto.CryptoKeyPair)
 
 	// sign some data with the private key
 	sig, err := webcrypto.Subtle().Sign(&webcrypto.Algorithm{
@@ -32,7 +32,7 @@ func main() {
 		Params: &ecdsa.Params{
 			Hash: "SHA-256",
 		},
-	}, cryptoKey.PrivateKey(), []byte("test"))
+	}, cryptoKeyPair.PrivateKey(), []byte("test"))
 	if err != nil {
 		panic(err)
 	}
@@ -43,7 +43,7 @@ func main() {
 		Params: &ecdsa.Params{
 			Hash: "SHA-256",
 		},
-	}, cryptoKey.PublicKey(), sig, []byte("test"))
+	}, cryptoKeyPair.PublicKey(), sig, []byte("test"))
 	if err != nil {
 		panic(err)
 	}
@@ -53,7 +53,7 @@ func main() {
 	}
 
 	// export the public/private key as webcrypto.JsonWebKey
-	out, err := webcrypto.Subtle().ExportKey(webcrypto.Jwk, cryptoKey.PrivateKey())
+	out, err := webcrypto.Subtle().ExportKey(webcrypto.Jwk, cryptoKeyPair.PrivateKey())
 	if err != nil {
 		panic(err)
 	}
@@ -62,7 +62,7 @@ func main() {
 	jwk := out.(*webcrypto.JsonWebKey)
 
 	// export the key as PKCS8
-	out, err = webcrypto.Subtle().ExportKey(webcrypto.PKCS8, cryptoKey.PrivateKey())
+	out, err = webcrypto.Subtle().ExportKey(webcrypto.PKCS8, cryptoKeyPair.PrivateKey())
 	if err != nil {
 		panic(err)
 	}

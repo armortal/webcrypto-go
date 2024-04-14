@@ -20,6 +20,7 @@ An implementation of the W3C Web Cryptography API specification (https://www.w3.
 		- [Parameter Definitions](#parameter-definitions-1)
 		- [Examples](#examples-1)
 	- [RSA-OAEP](#rsa-oaep)
+	- [RSASSA-PKCS1-v1_5]()
 	- [SHA](#sha)
 - [Contributing](#contributing)
 - [Appendix](#appendix)
@@ -124,8 +125,8 @@ func main() {
 		panic(err)
 	}
 
-	// key returned is a webcrypto.CryptoKeyPair
-	cryptoKey := key.(webcrypto.CryptoKeyPair)
+	// key returned is a webcrypto.CryptoKeyPair that contains two *ecdsa.CryptoKey
+	cryptoKeyPair := key.(webcrypto.CryptoKeyPair)
 
 	// sign some data with the private key
 	sig, err := webcrypto.Subtle().Sign(&webcrypto.Algorithm{
@@ -133,7 +134,7 @@ func main() {
 		Params: &ecdsa.Params{
 			Hash: "SHA-256",
 		},
-	}, cryptoKey.PrivateKey(), []byte("test"))
+	}, cryptoKeyPair.PrivateKey(), []byte("test"))
 	if err != nil {
 		panic(err)
 	}
@@ -144,7 +145,7 @@ func main() {
 		Params: &ecdsa.Params{
 			Hash: "SHA-256",
 		},
-	}, cryptoKey.PublicKey(), sig, []byte("test"))
+	}, cryptoKeyPair.PublicKey(), sig, []byte("test"))
 	if err != nil {
 		panic(err)
 	}
@@ -154,7 +155,7 @@ func main() {
 	}
 
 	// export the public/private key as webcrypto.JsonWebKey
-	out, err := webcrypto.Subtle().ExportKey(webcrypto.Jwk, cryptoKey.PrivateKey())
+	out, err := webcrypto.Subtle().ExportKey(webcrypto.Jwk, cryptoKeyPair.PrivateKey())
 	if err != nil {
 		panic(err)
 	}
@@ -163,7 +164,7 @@ func main() {
 	jwk := out.(*webcrypto.JsonWebKey)
 
 	// export the key as PKCS8
-	out, err = webcrypto.Subtle().ExportKey(webcrypto.PKCS8, cryptoKey.PrivateKey())
+	out, err = webcrypto.Subtle().ExportKey(webcrypto.PKCS8, cryptoKeyPair.PrivateKey())
 	if err != nil {
 		panic(err)
 	}
@@ -345,28 +346,47 @@ func main() {
 
 The **RSA-OAEP** algorithm is the implementation of operations described in [§22](https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep) of the W3C specification.
 
+`import "github.com/armortal/webcrypto-go/algorithms/rsa"`
+
+#### Parameter Definitions
+
+Below are the parameters that supported RSA-OAEP operations will take according to 
+[§22.2](https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep-registration).
+
+#### OaepParams
+
+As specified in [§22.3](https://www.w3.org/TR/WebCryptoAPI/#rsa-oaep-params)
+
+| Field | Type | Description |
+| :---- | :--- | :---------- |
+| Label | `string` | The optional label/application data to associate with the message. |
+
+#### Examples
+
 ```go
 package main
 
 import (
+	"fmt"
+	"math/big"
+
 	"github.com/armortal/webcrypto-go"
 	"github.com/armortal/webcrypto-go/algorithms/rsa"
 )
 
 func main() {
-	// generateKey
+	// generate a new key
 	key, err := webcrypto.Subtle().GenerateKey(
-		&rsa.Algorithm{
+		&webcrypto.Algorithm{
 			Name: "RSA-OAEP",
-			HashedKeyGenParams: &rsa.HashedKeyGenParams{
+			Params: &rsa.HashedKeyGenParams{
 				KeyGenParams: rsa.KeyGenParams{
-					ModulusLength: 2048,
-					PublicExponent:      *big.NewInt(65537),
+					ModulusLength:  2048,
+					PublicExponent: *big.NewInt(65537),
 				},
 				Hash: "SHA-256",
 			},
-
-		}, true, webcrypto.Decrypt, webcrypto.Encrypt)
+		}, true, []webcrypto.KeyUsage{webcrypto.Decrypt, webcrypto.Encrypt})
 
 	if err != nil {
 		panic(err)
@@ -374,9 +394,96 @@ func main() {
 
 	cryptoKeyPair := key.(webcrypto.CryptoKeyPair)
 
-	// do something with cryptoKeyPair
+	// encrypt some data with an optional label
+	encrypted, err := webcrypto.Subtle().Encrypt(&webcrypto.Algorithm{
+		Name: "RSA-OAEP",
+		Params: &rsa.OaepParams{
+			Label: []byte("optional"),
+		},
+	}, cryptoKeyPair.PublicKey(), []byte("test"))
+
+	if err != nil {
+		panic(err)
+	}
+
+	// decrypt the data
+	decrypted, err := webcrypto.Subtle().Decrypt(&webcrypto.Algorithm{
+		Name: "RSA-OAEP",
+		Params: &rsa.OaepParams{
+			Label: []byte("optional"),
+		},
+	}, cryptoKeyPair.PrivateKey(), encrypted)
+
+	if err != nil {
+		panic(err)
+	}
+
+	// do something with decrypted data
+	fmt.Println(string(decrypted))
+
+	// export the private/public key as jwk
+	out, err := webcrypto.Subtle().ExportKey(webcrypto.Jwk, cryptoKeyPair.PrivateKey())
+	if err != nil {
+		panic(err)
+	}
+
+	// do something with jwk
+	jwk := out.(*webcrypto.JsonWebKey)
+
+	// import a key from jwk
+	in, err := webcrypto.Subtle().ImportKey(webcrypto.Jwk, jwk, &webcrypto.Algorithm{
+		Name: "RSA-OAEP",
+		Params: &rsa.HashedImportParams{
+			Hash: "SHA-256",
+		},
+	}, true, []webcrypto.KeyUsage{webcrypto.Decrypt})
+
+	if err != nil {
+		panic(err)
+	}
+
+	// do something with the imported key
+	fmt.Println(in.Type())
 }
 ```
+
+### RSASSA-PKCS1-v1_5
+
+This algorithm is currently not supported. However, parameter definitions for those used in [RSA-OAEP](#rsa-oaep) operations 
+come from those defined in this algorithm.
+
+#### Parameter Definitions
+
+Below are the parameters that supported RSASSA-PKCS1-v1_5 operations will take according to 
+[§20.2](https://www.w3.org/TR/WebCryptoAPI/#rsassa-pkcs1-registration).
+
+##### KeyGenParams
+
+As specified in [§20.3](https://www.w3.org/TR/WebCryptoAPI/#RsaKeyGenParams-dictionary)
+
+| Field | Type | Description |
+| :---- | :--- | :---------- |
+| ModulusLength | `uint64` | The length, in bits, of the RSA modulus. |
+| PublicExponent | `*big.Int` | The RSA public exponent. |
+
+##### HashedKeyGenParams
+
+As specified in [§20.4](https://www.w3.org/TR/WebCryptoAPI/#RsaHashedKeyGenParams-dictionary)
+
+| Field | Type | Description |
+| :---- | :--- | :---------- |
+| Hash | `string` | The [hash algorithm](#hash-algorithms) to use. |
+| ModulusLength | `uint64` | The length, in bits, of the RSA modulus. |
+| PublicExponent | `*big.Int` | The RSA public exponent. |
+
+##### HashedImportParams
+
+As specified in [§20.7](https://www.w3.org/TR/WebCryptoAPI/#RsaHashedImportParams-dictionary)
+
+| Field | Type | Description |
+| :---- | :--- | :---------- |
+| Hash | `string` | The [hash algorithm](#hash-algorithms) to use. |
+
 
 ## SHA
 
