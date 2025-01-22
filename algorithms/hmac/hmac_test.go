@@ -1,4 +1,4 @@
-// Copyright 2023-2024 ARMORTAL TECHNOLOGIES PTY LTD
+// Copyright 2023-2025 ARMORTAL TECHNOLOGIES PTY LTD
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package hmac
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -128,6 +129,98 @@ func TestImportKey(t *testing.T) {
 		t.Fatal("algorithm name mismatch")
 	}
 
+}
+
+func Test_ImportKey_JsonWebKey(t *testing.T) {
+	t.Run("import no use", func(t *testing.T) {
+		k := `{"kty":"oct","key_ops":["sign","verify"],"alg":"HS256","ext":true,"k":"31G2ai1-ZfKsfQfNEQNga9H90J3q8pSHCBc9jcxM7IUzGwzofZJrNgCmE7lXOyR-_BxlA0NthOYT11NwRMOu1w"}`
+		var jwk webcrypto.JsonWebKey
+		if err := json.Unmarshal([]byte(k), &jwk); err != nil {
+			t.Errorf("failed to unmarshal json: %s", err.Error())
+		}
+
+		_, err := subtle.ImportKey(webcrypto.Jwk, &jwk, &webcrypto.Algorithm{
+			Name: "HMAC",
+			Params: &ImportParams{
+				Hash: "SHA-256",
+			},
+		}, true, []webcrypto.KeyUsage{webcrypto.Sign, webcrypto.Verify})
+		if err != nil {
+			t.Errorf("failed to import key: %s", err.Error())
+		}
+	})
+
+	t.Run("import valid use", func(t *testing.T) {
+		k := `{"kty":"oct","use":"sign","key_ops":["sign","verify"],"alg":"HS256","ext":true,"k":"31G2ai1-ZfKsfQfNEQNga9H90J3q8pSHCBc9jcxM7IUzGwzofZJrNgCmE7lXOyR-_BxlA0NthOYT11NwRMOu1w"}`
+		var jwk webcrypto.JsonWebKey
+		if err := json.Unmarshal([]byte(k), &jwk); err != nil {
+			t.Errorf("failed to unmarshal json: %s", err.Error())
+		}
+
+		_, err := subtle.ImportKey(webcrypto.Jwk, &jwk, &webcrypto.Algorithm{
+			Name: "HMAC",
+			Params: &ImportParams{
+				Hash: "SHA-256",
+			},
+		}, true, []webcrypto.KeyUsage{webcrypto.Sign, webcrypto.Verify})
+		if err != nil {
+			t.Errorf("failed to import key: %s", err.Error())
+		}
+	})
+
+	t.Run("import invalid use", func(t *testing.T) {
+		k := `{"kty":"oct","use":"enc","key_ops":["sign","verify"],"alg":"HS256","ext":true,"k":"31G2ai1-ZfKsfQfNEQNga9H90J3q8pSHCBc9jcxM7IUzGwzofZJrNgCmE7lXOyR-_BxlA0NthOYT11NwRMOu1w"}`
+		var jwk webcrypto.JsonWebKey
+		if err := json.Unmarshal([]byte(k), &jwk); err != nil {
+			t.Errorf("failed to unmarshal json: %s", err.Error())
+		}
+
+		_, err := subtle.ImportKey(webcrypto.Jwk, &jwk, &webcrypto.Algorithm{
+			Name: "HMAC",
+			Params: &ImportParams{
+				Hash: "SHA-256",
+			},
+		}, true, []webcrypto.KeyUsage{webcrypto.Sign, webcrypto.Verify})
+		if err == nil {
+			t.Error("importKey should have returned error")
+		}
+	})
+
+	t.Run("import invalid key_ops", func(t *testing.T) {
+		k := `{"kty":"oct","key_ops":["encrypt","verify"],"alg":"HS256","ext":true,"k":"31G2ai1-ZfKsfQfNEQNga9H90J3q8pSHCBc9jcxM7IUzGwzofZJrNgCmE7lXOyR-_BxlA0NthOYT11NwRMOu1w"}`
+		var jwk webcrypto.JsonWebKey
+		if err := json.Unmarshal([]byte(k), &jwk); err != nil {
+			t.Errorf("failed to unmarshal json: %s", err.Error())
+		}
+
+		_, err := subtle.ImportKey(webcrypto.Jwk, &jwk, &webcrypto.Algorithm{
+			Name: "HMAC",
+			Params: &ImportParams{
+				Hash: "SHA-256",
+			},
+		}, true, []webcrypto.KeyUsage{webcrypto.Sign, webcrypto.Verify})
+		if err == nil {
+			t.Error("importKey should have returned error")
+		}
+	})
+
+	t.Run("import invalid key length", func(t *testing.T) {
+		k := `{"kty":"oct","key_ops":["sign","verify"],"alg":"HS256","ext":true,"k":"VrmFU2huAL6phqi_vvGPvItpX2cJFy6rzjEQpjMqKA0"}`
+		var jwk webcrypto.JsonWebKey
+		if err := json.Unmarshal([]byte(k), &jwk); err != nil {
+			t.Errorf("failed to unmarshal json: %s", err.Error())
+		}
+
+		_, err := subtle.ImportKey(webcrypto.Jwk, &jwk, &webcrypto.Algorithm{
+			Name: "HMAC",
+			Params: &ImportParams{
+				Hash: "SHA-256",
+			},
+		}, true, []webcrypto.KeyUsage{webcrypto.Sign, webcrypto.Verify})
+		if err == nil {
+			t.Error("importKey should have returned error")
+		}
+	})
 }
 
 func TestSign(t *testing.T) {
