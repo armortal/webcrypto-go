@@ -1,4 +1,4 @@
-// Copyright 2023-2024 ARMORTAL TECHNOLOGIES PTY LTD
+// Copyright 2023-2025 ARMORTAL TECHNOLOGIES PTY LTD
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -297,8 +297,10 @@ func importKeyFromJsonWebKey(keyData *webcrypto.JsonWebKey, params *ImportParams
 
 	// If usages is non-empty and the use field of jwk is present and is not "sign", then throw a DataError.
 	if len(usages) != 0 {
-		if keyData.Use != "sign" {
-			return nil, webcrypto.NewError(webcrypto.ErrDataError, "use must be 'sign'")
+		if keyData.Use != "" {
+			if keyData.Use != "sign" {
+				return nil, webcrypto.NewError(webcrypto.ErrDataError, "use must be 'sign'")
+			}
 		}
 	}
 
@@ -316,11 +318,12 @@ func importKeyFromJsonWebKey(keyData *webcrypto.JsonWebKey, params *ImportParams
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "k length cannot be less than hash length")
 	}
 
-	if params.Length != uint64(length) {
-		return nil, webcrypto.NewError(webcrypto.ErrDataError, "length provided does not match key length")
+	// If the params length is specified, we'll check and ensure the key provided matches the length
+	if params.Length != 0 {
+		if params.Length != uint64(length) {
+			return nil, webcrypto.NewError(webcrypto.ErrDataError, "length provided does not match key length")
+		}
 	}
-
-	params.Length = uint64(length)
 
 	if keyData.Ext != extractable {
 		return nil, webcrypto.NewError(webcrypto.ErrDataError, "ext in key does not match value provided")
